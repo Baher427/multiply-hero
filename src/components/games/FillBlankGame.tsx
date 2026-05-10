@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -139,7 +139,29 @@ export default function FillBlankGame({
   // Auto-advance when time runs out
   useEffect(() => {
     if (timeLeft <= 0 && !showFeedback) {
-      handleSubmit();
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (input === '') {
+        // Time ran out with no answer - count as wrong
+        setWrongCount((prev) => prev + 1);
+        setCombo(0);
+        setFeedbackType('wrong');
+        setShowFeedback(true);
+        playSound('wrong');
+
+        setTimeout(() => {
+          if (currentIndex < totalQuestions - 1) {
+            setCurrentIndex((prev) => prev + 1);
+            setInput('');
+            setFeedbackType(null);
+            setShowFeedback(false);
+            setPointsAnimation(null);
+          } else {
+            handleComplete();
+          }
+        }, 1800);
+      } else {
+        handleSubmit();
+      }
     }
   }, [timeLeft]);
 
@@ -162,9 +184,8 @@ export default function FillBlankGame({
     return 'bg-red-400';
   };
 
-  const randomEmoji = CELEBRATION_EMOJIS[Math.floor(Math.random() * CELEBRATION_EMOJIS.length)];
-  const randomEncouraging =
-    ENCOURAGING_MESSAGES[Math.floor(Math.random() * ENCOURAGING_MESSAGES.length)];
+  const randomEmoji = useMemo(() => CELEBRATION_EMOJIS[Math.floor(Math.random() * CELEBRATION_EMOJIS.length)], [currentIndex]);
+  const randomEncouraging = useMemo(() => ENCOURAGING_MESSAGES[Math.floor(Math.random() * ENCOURAGING_MESSAGES.length)], [currentIndex]);
 
   // Build display with blank
   const renderDisplay = () => {

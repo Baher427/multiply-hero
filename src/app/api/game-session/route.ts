@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { childId, gameType, tableNumber, score, correctCount, wrongCount, duration, questions } = body;
+    const { childId, gameType, tableNumber, score, correctCount, wrongCount, duration, questions, bestCombo } = body;
 
     if (!childId || !gameType) {
       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
@@ -83,8 +83,10 @@ export async function POST(req: NextRequest) {
         newStreak = 1;
       }
 
-      // Update combo
-      const newBestCombo = Math.max(child.bestCombo, correctCount > 0 && wrongCount === 0 ? correctCount : child.bestCombo);
+      // Update combo - use bestCombo from game result if provided
+      const newBestCombo = bestCombo != null
+        ? Math.max(child.bestCombo, bestCombo)
+        : Math.max(child.bestCombo, correctCount > 0 && wrongCount === 0 ? correctCount : child.bestCombo);
 
       await db.child.update({
         where: { id: childId },

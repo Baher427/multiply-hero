@@ -118,8 +118,8 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   endGame: () => {
     const state = get();
-    const duration = Math.floor((Date.now() - state.startTime) / 1000);
-    const accuracy = state.correctCount / (state.correctCount + state.wrongCount) * 100;
+    const duration = state.startTime > 0 ? Math.floor((Date.now() - state.startTime) / 1000) : 0;
+    const accuracy = (state.correctCount + state.wrongCount) > 0 ? (state.correctCount / (state.correctCount + state.wrongCount)) * 100 : 0;
     
     let starsEarned = 0;
     if (accuracy >= 90) starsEarned = 3;

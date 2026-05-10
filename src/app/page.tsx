@@ -30,6 +30,8 @@ import ParentDashboard from '@/components/parent/ParentDashboard';
 import SettingsPage from '@/components/settings/SettingsPage';
 import AICoach from '@/components/shared/AICoach';
 import SoundToggle from '@/components/shared/SoundToggle';
+import LeaderboardPage from '@/components/leaderboard/LeaderboardPage';
+import ShopPage from '@/components/shop/ShopPage';
 
 const AVATAR_MAP: Record<string, string> = {
   lion: '🦁', cat: '🐱', bear: '🐻', rabbit: '🐰', elephant: '🐘',
@@ -51,6 +53,8 @@ const AUTH_REQUIRED_VIEWS: AppView[] = [
   'daily-challenge',
   'story-mode',
   'settings',
+  'leaderboard',
+  'shop',
 ];
 
 export default function Home() {
@@ -74,7 +78,7 @@ export default function Home() {
     toggleMusic,
   } = useAppStore();
 
-  const { startGame, resetGame } = useGameStore();
+  const { resetGame } = useGameStore();
 
   const [children, setChildren] = useState<ChildProfile[]>([]);
   const [tableProgress, setTableProgress] = useState<TableProgressData[]>([]);
@@ -178,7 +182,7 @@ export default function Home() {
       const res = await fetch(`/api/children/${childId}`);
       const data = await res.json();
       if (data.success) {
-        setSelectedChild(data.data);
+        setSelectedChild(data.data.child);
         authenticate(childId);
         await fetchChildData(childId);
         navigate('dashboard');
@@ -187,6 +191,32 @@ export default function Home() {
       console.error('Failed to select child:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Handle shop purchase
+  const handleShopPurchase = async (itemType: string, itemId: string, cost: number, currency: 'coins' | 'gems') => {
+    if (!selectedChild) return;
+
+    try {
+      const updates: Record<string, number> = {};
+      if (currency === 'coins') {
+        updates.coins = Math.max(0, selectedChild.coins - cost);
+      } else {
+        updates.gems = Math.max(0, selectedChild.gems - cost);
+      }
+
+      const res = await fetch(`/api/children/${selectedChild.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSelectedChild(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to process purchase:', error);
     }
   };
 
@@ -217,6 +247,7 @@ export default function Home() {
           correctCount: result.correctCount,
           wrongCount: result.wrongCount,
           duration: result.duration,
+          bestCombo: result.bestCombo,
         }),
       });
 
@@ -225,6 +256,8 @@ export default function Home() {
         ? [1, 2, 3, 4, 5, 6, 7, 8, 9] 
         : [gameConfig.tableNumber];
       
+      // Note: For 'mixed' table mode, dividing correct/wrong counts equally across all tables
+      // is an approximation. This distributes fractional counts using Math.round.
       for (const t of tables) {
         await fetch('/api/progress', {
           method: 'PUT',
@@ -239,17 +272,17 @@ export default function Home() {
         });
       }
 
-      // Check for badges
-      await checkAndAwardBadges(result);
-
-      // Refresh child data
+      // Refresh child data first so badges check uses up-to-date progress
       await fetchChildData(selectedChild.id);
+
+      // Check for badges (after data refresh so progress is current)
+      await checkAndAwardBadges(result);
       
       // Refresh child profile
       const childRes = await fetch(`/api/children/${selectedChild.id}`);
       const childData = await childRes.json();
       if (childData.success) {
-        setSelectedChild(childData.data);
+        setSelectedChild(childData.data.child);
       }
     } catch (error) {
       console.error('Failed to save game session:', error);
@@ -464,6 +497,8 @@ export default function Home() {
             onStoryMode={() => navigate('story-mode')}
             onProfile={() => navigate('profile-setup')}
             onSettings={() => navigate('settings')}
+            onLeaderboard={() => navigate('leaderboard')}
+            onShop={() => navigate('shop')}
             onBack={() => {
               handleLogout();
             }}
@@ -582,6 +617,39 @@ export default function Home() {
             musicEnabled={musicEnabled}
             toggleSound={toggleSound}
             toggleMusic={toggleMusic}
+          />
+        ) : null;
+
+      case 'leaderboard':
+        return selectedChild && isAuthenticated ? (
+          <LeaderboardPage
+            currentChild={{
+              id: selectedChild.id,
+              name: selectedChild.name,
+              displayName: selectedChild.displayName,
+              avatarId: selectedChild.avatarId,
+              points: selectedChild.points,
+              level: selectedChild.level,
+            }}
+            onBack={() => navigate('dashboard')}
+          />
+        ) : null;
+
+      case 'shop':
+        return selectedChild && isAuthenticated ? (
+          <ShopPage
+            currentChild={{
+              id: selectedChild.id,
+              name: selectedChild.name,
+              displayName: selectedChild.displayName,
+              avatarId: selectedChild.avatarId,
+              coins: selectedChild.coins,
+              gems: selectedChild.gems,
+              points: selectedChild.points,
+              level: selectedChild.level,
+            }}
+            onBack={() => navigate('dashboard')}
+            onPurchase={handleShopPurchase}
           />
         ) : null;
 

@@ -85,7 +85,7 @@ export default function MatchingGame({
 
   // Check completion
   useEffect(() => {
-    if (matchedPairs.size === questions.length && questions.length > 0 && !completedRef.current) {
+    if (matchedPairs.size === questions.length * 2 && questions.length > 0 && !completedRef.current) {
       completedRef.current = true;
       playSound('gameOver');
       const duration = Math.round((Date.now() - startTime) / 1000);
@@ -256,7 +256,7 @@ export default function MatchingGame({
       <div className="flex items-center justify-center gap-2 mb-4">
         <LinkIcon className="w-4 h-4 text-amber-500" />
         <span className="text-sm text-gray-500">
-          صِل العبارة بالإجابة الصحيحة ({matchedPairs.size / 2} / {questions.length})
+          صِل العبارة بالإجابة الصحيحة ({matchedPairs.size / 2 > questions.length ? questions.length : Math.floor(matchedPairs.size / 2)} / {questions.length})
         </span>
       </div>
 

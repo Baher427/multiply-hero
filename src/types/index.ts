@@ -14,7 +14,9 @@ export type AppView =
   | 'story-mode'
   | 'admin'
   | 'parent'
-  | 'settings';
+  | 'settings'
+  | 'leaderboard'
+  | 'shop';
 
 // ===== Game Types =====
 export type GameType = 'multiple-choice' | 'true-false' | 'matching' | 'fill-blank';

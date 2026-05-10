@@ -16,7 +16,7 @@ function shuffleArray<T>(array: T[]): T[] {
 function getWrongAnswers(correctAnswer: number, tableNumber: number, count: number): number[] {
   const wrongAnswers = new Set<number>();
   const maxAnswer = Math.max(tableNumber * 9, correctAnswer + 10);
-  const minAnswer = Math.min(1, correctAnswer - 10);
+  const minAnswer = Math.max(1, correctAnswer - 10);
   
   while (wrongAnswers.size < count) {
     let wrong: number;
@@ -137,6 +137,7 @@ export function generateMatchingQuestions(
   tableNumber: number,
   count: number = 5
 ): Question[] {
+  count = Math.min(count, 9); // Guard: only 9 unique multipliers (1-9) available
   const questions: Question[] = [];
   const usedMultipliers = new Set<number>();
 
