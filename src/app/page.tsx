@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useAppStore } from '@/stores/app-store';
 import { useGameStore } from '@/stores/game-store';
 import { generateQuestions } from '@/lib/game-engine/question-generator';
