@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Zap, Star, Link as LinkIcon } from 'lucide-react';
+import { useSound } from '@/hooks/use-sound';
 
 interface MatchingGameProps {
   questions: Array<{
@@ -35,6 +36,7 @@ export default function MatchingGame({
   onComplete,
   onBack,
 }: MatchingGameProps) {
+  const { play: playSound } = useSound();
   const [selectedLeft, setSelectedLeft] = useState<number | null>(null);
   const [matchedPairs, setMatchedPairs] = useState<Set<number>>(new Set());
   const [matchLines, setMatchLines] = useState<MatchLine[]>([]);
@@ -85,6 +87,7 @@ export default function MatchingGame({
   useEffect(() => {
     if (matchedPairs.size === questions.length && questions.length > 0 && !completedRef.current) {
       completedRef.current = true;
+      playSound('gameOver');
       const duration = Math.round((Date.now() - startTime) / 1000);
       setTimeout(() => {
         onComplete({
@@ -143,11 +146,13 @@ export default function MatchingGame({
       if (newCombo > bestCombo) setBestCombo(newCombo);
       setLastMatched(selectedLeft);
       setTimeout(() => setLastMatched(null), 600);
+      playSound('match');
     } else {
       setWrongCount((prev) => prev + 1);
       setCombo(0);
       setWrongPair({ left: selectedLeft, right: shuffledIndex });
       setTimeout(() => setWrongPair(null), 800);
+      playSound('wrong');
     }
 
     setSelectedLeft(null);
@@ -220,7 +225,7 @@ export default function MatchingGame({
         <Button
           variant="ghost"
           size="sm"
-          onClick={onBack}
+          onClick={() => { playSound('click'); onBack(); }}
           className="text-gray-500 hover:text-gray-700"
         >
           رجوع

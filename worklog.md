@@ -1,176 +1,109 @@
 # MultiplyHero - Worklog
 
-## Project Status: ACTIVE DEVELOPMENT
+## Project Status: ACTIVE DEVELOPMENT - Phase 2 Enhancement Complete
 
-### Current Phase: Core Features Complete + Enhancement
-
----
-
-## Task 1: Initial Architecture & Database
-**Agent:** Main
-**Status:** ✅ COMPLETE
-
-- Created full Prisma schema with Child, TableProgress, GameSession, Badge, DailyChallenge, UnlockedAvatar, StoryProgress, Admin, Parent models
-- Pushed schema to SQLite database
-- Created TypeScript types in src/types/index.ts
-- Created Zustand stores (app-store.ts, game-store.ts)
-- Created question generator engine (question-generator.ts)
-- Created adaptive learning engine (adaptive-engine.ts)
-- Created constants file (constants.ts) with avatars, worlds, badges, coach messages
+### Current Phase: QA + Enhancement Round
 
 ---
 
-## Task 2: API Routes
-**Agent:** Main
-**Status:** ✅ COMPLETE
+## QA Round Findings (2026-05-11)
 
-- /api/children - GET all, POST new child
-- /api/children/[childId] - GET, PUT child
-- /api/progress - GET by childId, PUT update progress
-- /api/game-session - POST save session
-- /api/badges - GET by childId, POST award badge
-- /api/admin - GET all data, DELETE child
-- /api/parent - GET child detail
+### Critical Bugs Found & Fixed:
+1. **`sounds.ts` had `'use client'` directive** on a non-component library file — this caused Next.js SSR to fail importing the module, resulting in `Module not found: Can't resolve '@/hooks/use-sound'`. **Fixed** by removing `'use client'` from `sounds.ts` and `use-sound.ts`.
+2. **`child.lastActiveDate` type mismatch** — The Prisma schema uses `String?` but code was comparing with `Date` objects. **Fixed** by using ISO date strings consistently.
+3. **Cleared `.next` cache** which caused temporary server outage — server fully recovered after rebuild.
 
----
-
-## Task 3: Landing Page
-**Agent:** Sub-agent
-**Status:** ✅ COMPLETE
-
-- Beautiful animated landing page with gradient background
-- Floating decorative elements
-- Mascot with speech bubble
-- Feature cards (4 game modes, badges, challenges, progress)
-- Stats strip
-- Secret admin access (click title 5x or long-press mascot 3s)
-- Parent access button (small, visible)
-- NO visible admin button
+### Visual QA Results (via VLM analysis):
+- ✅ Landing page renders correctly with 3D mascot image
+- ✅ Admin button is completely hidden
+- ✅ Parent button visible but subtle
+- ✅ Design is high quality and child-friendly
+- ✅ Arabic text displays correctly (RTL)
+- ✅ Sound toggle button functional
 
 ---
 
-## Task 4: Profile Setup
-**Agent:** Sub-agent
-**Status:** ✅ COMPLETE
+## Enhancement Round Completed
 
-- 3-step wizard: Name → Avatar → Color/Age
-- 30 emoji avatars across 4 categories
-- Locked avatar states
-- 8 color options
-- Age selector 5-12
+### 1. Login Page Enhancement (Task QA-3)
+**File:** `/home/z/my-project/src/components/profile/LoginPage.tsx`
 
----
+- ✅ Replaced emoji avatars with `AvatarImage` 3D component (lion, cat, bear, rabbit, dog, fox, panda, unicorn, dragon, penguin)
+- ✅ Added mascot image (`/images/mascot/hero.png`) at 120×120px with spring animation
+- ✅ Frosted glass card effect for child selection area
+- ✅ Gradient borders on child cards (amber-to-teal)
+- ✅ Pulsating glow on "مستخدم جديد" button
+- ✅ Subtle geometric background patterns
+- ✅ Sound effects: `click` on select, `star` on enter
+- ✅ Improved empty state with mascot and warm invitation
 
-## Task 5: Child Dashboard
-**Agent:** Sub-agent
-**Status:** ✅ COMPLETE + ENHANCED
+### 2. Sound Effects Added to All Games (Task QA-4)
+**Files:** TrueFalseGame, MatchingGame, FillBlankGame, GameResults, GameSelector
 
-- Welcome header with 3D avatar image
-- Stats bar (points, stars, coins, gems, streak)
-- Overall progress bar
-- 9 table progress cards with circular progress
-- Quick action buttons with sound effects
-- AI coach tip card
-- Weak table indicator
-- Floating decorations
+| Component | Sounds Added |
+|---|---|
+| TrueFalseGame | correct, combo (≥3), wrong, click |
+| MatchingGame | match, wrong, gameOver, click |
+| FillBlankGame | correct, combo (≥3), wrong, click (numpad/delete/back) |
+| GameResults | gameOver (mount), star (500ms), coins (1200ms), badge (1600ms), click (buttons) |
+| GameSelector | click (game/table/difficulty), levelUp (start) |
 
----
+### 3. GameSelector Enhancement (Task QA-5)
+**File:** `/home/z/my-project/src/components/games/GameSelector.tsx`
 
-## Task 6: 4 Game Modes
-**Agent:** Sub-agent
-**Status:** ✅ COMPLETE
+- ✅ World images (`/images/worlds/world1-9.png`) as table card backgrounds
+- ✅ Arabic world names overlay
+- ✅ Improved game type cards with unique gradients and animated icons
+- ✅ "⭐ موصى به" (Recommended) badge on recommended table
+- ✅ Difficulty descriptions in Arabic
+- ✅ Animated start button with gradient shimmer and pulsing glow
+- ✅ Sound effects integrated
 
-- MultipleChoiceGame - 4-option quiz with timer, combo, sounds
-- TrueFalseGame - True/False with 2 large buttons
-- MatchingGame - Connect expressions to answers
-- FillBlankGame - Fill missing number with numpad
-- GameResults - Celebration screen with stars, rewards
-- GameSelector - Choose game type, table, difficulty
+### 4. Level Calculation System
+**File:** `/home/z/my-project/src/app/api/game-session/route.ts`
 
----
+- ✅ Level thresholds: 50, 150, 300, 500, 800, 1200, 1800, 2500, 3500, 5000, 7000, 10000
+- ✅ `calculateLevel()` function determines level from points
+- ✅ Level-up detection and reporting in API response
+- ✅ Streak calculation: increments if played yesterday, resets if gap > 1 day
+- ✅ Best combo tracking
 
-## Task 7: World Map, Achievements, Challenges, Story
-**Agent:** Sub-agent
-**Status:** ✅ COMPLETE
+### 5. ProfileSetup with 3D Avatars
+**File:** `/home/z/my-project/src/components/profile/ProfileSetup.tsx`
 
-- ProgressMap - Vertical world path with 9 themed worlds
-- AchievementsPage - Badge grid with categories
-- DailyChallenge - Daily questions with streak tracking
-- StoryMode - 9 story chapters with narrative
-
----
-
-## Task 8: Admin & Parent Dashboards
-**Agent:** Sub-agent
-**Status:** ✅ COMPLETE
-
-- AdminDashboard - Stats, table difficulty chart, children management, detailed child view
-- ParentDashboard - Child overview, table progress, weekly report, recommendations
+- ✅ Uses `AvatarImage` component for 3D avatars where available
+- ✅ Falls back to emoji for non-3D avatars
+- ✅ Sound effects: click on navigation, levelUp on complete
+- ✅ Consistent 3D avatar rendering across preview cards
 
 ---
 
-## Task 9: 3D Images Generated
-**Agent:** Sub-agent (Image Generation)
-**Status:** ✅ COMPLETE
+## Current State Summary
 
-- 10 avatar images (lion, cat, bear, rabbit, dog, fox, panda, unicorn, dragon, penguin)
-- 9 world theme images (island, forest, ocean, mountain, candy, space, castle, art, kingdom)
-- 1 mascot image (lion with superhero cape)
-- All saved to /public/images/
+### ✅ Working Features:
+- Landing page with 3D mascot, hidden admin (5x title click / 3s mascot long-press)
+- Mandatory login with child selection + optional PIN
+- Child profile creation with 3D avatar images
+- Dashboard with 3D avatar, stats, progress, sounds
+- 4 game modes all with sound effects
+- GameSelector with world images and recommended badges
+- Progress tracking, badges, daily challenges, story mode
+- Admin dashboard (secret access)
+- Parent dashboard
+- Level calculation + streak tracking
+- Real SQLite database (Prisma)
+- Web Audio API sound system (11 effects)
 
----
+### 🔧 Known Issues / Risks:
+- Server sometimes needs restart after `.next` cache clear
+- `allowedDevOrigins` warning from Next.js (cosmetic, not breaking)
+- Some avatar IDs in ProfileSetup use different naming (e.g., `bunny` vs `rabbit`) — may cause 3D image fallback to emoji
 
-## Task 10: Sound Effects System
-**Agent:** Sub-agent
-**Status:** ✅ COMPLETE
-
-- Web Audio API based sound engine (no external files needed)
-- 11 distinct sounds: correct, wrong, combo, levelUp, badge, click, star, coins, gameOver, countdown, match
-- useSound hook for React components
-- SoundToggle component updated
-
----
-
-## Task 11: Authentication System
-**Agent:** Sub-agent
-**Status:** ✅ COMPLETE
-
-- Mandatory login before playing
-- LoginPage component with child selection and PIN entry
-- Authentication guard for protected views
-- isAuthenticated state in app store
-- logout() action
-- PIN field added to Child model
-
----
-
-## Bug Fixes Applied
-- Fixed value.toLocaleString undefined crash in ChildDashboard StatItem
-- Fixed children prop name conflict in ChildSelector
-- Fixed AICoach and FeedbackAnimation lint errors (setState in effect)
-- Removed AnimatePresence causing navigation issues
-- Removed seed data for clean real database
-
----
-
-## Current State
-- ✅ Landing page with 3D mascot, hidden admin
-- ✅ Mandatory login flow
-- ✅ Child profile creation with avatar selection
-- ✅ Dashboard with 3D avatar images and sound effects
-- ✅ 4 game modes working
-- ✅ Progress tracking and badges
-- ✅ World map, achievements, daily challenges, story mode
-- ✅ Admin dashboard (secret access)
-- ✅ Parent dashboard
-- ✅ Sound effects system (Web Audio API)
-- ✅ 3D images for avatars, worlds, mascot
-- ✅ Real database (SQLite via Prisma)
-- ✅ No seed/demo data
-
-## Next Steps
-- Add more sound effects to remaining game components
-- Enhance admin dashboard controls
-- Add Google Sign-In
-- Polish animations and transitions
-- Mobile responsiveness testing
+### 📋 Priority Next Steps:
+1. Fix avatar ID inconsistencies between ProfileSetup and AvatarImage component
+2. Add more visual polish to ProgressMap with world images
+3. Add Google Sign-In support
+4. Mobile responsiveness testing across all components
+5. Add confetti/particle effects to game results
+6. Enhance admin dashboard with more controls (edit child, manage challenges)
+7. Performance optimization for slower devices

@@ -1,5 +1,3 @@
-'use client';
-
 // Web Audio API based sound generator - no external files needed
 class SoundEngine {
   private audioContext: AudioContext | null = null;

@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Star, Trophy, Clock, Zap, CheckCircle, XCircle, Gem, Coins } from 'lucide-react';
+import { useSound } from '@/hooks/use-sound';
 
 interface GameResultsProps {
   result: {
@@ -48,6 +49,7 @@ function ConfettiPiece({ delay, color, left, size }: { delay: number; color: str
 }
 
 export default function GameResults({ result, onPlayAgain, onDashboard }: GameResultsProps) {
+  const { play: playSound } = useSound();
   const [showDetails, setShowDetails] = useState(false);
 
   // Confetti colors
@@ -59,6 +61,18 @@ export default function GameResults({ result, onPlayAgain, onDashboard }: GameRe
     left: `${Math.random() * 100}%`,
     size: 6 + Math.random() * 8,
   }));
+
+  useEffect(() => {
+    playSound('gameOver');
+    const starTimer = setTimeout(() => playSound('star'), 500);
+    const coinsTimer = setTimeout(() => playSound('coins'), 1200);
+    const badgeTimer = setTimeout(() => playSound('badge'), 1600);
+    return () => {
+      clearTimeout(starTimer);
+      clearTimeout(coinsTimer);
+      clearTimeout(badgeTimer);
+    };
+  }, [playSound]);
 
   useEffect(() => {
     const timer = setTimeout(() => setShowDetails(true), 800);
@@ -252,7 +266,7 @@ export default function GameResults({ result, onPlayAgain, onDashboard }: GameRe
           <motion.button
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
-            onClick={onPlayAgain}
+            onClick={() => { playSound('click'); onPlayAgain(); }}
             className="w-full rounded-2xl p-4 text-xl font-bold bg-gradient-to-l from-emerald-500 to-emerald-600 text-white shadow-lg hover:shadow-xl transition-shadow cursor-pointer"
           >
             العب مرة أخرى 🔄
@@ -260,7 +274,7 @@ export default function GameResults({ result, onPlayAgain, onDashboard }: GameRe
           <motion.button
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
-            onClick={onDashboard}
+            onClick={() => { playSound('click'); onDashboard(); }}
             className="w-full rounded-2xl p-4 text-xl font-bold bg-gradient-to-l from-gray-100 to-gray-200 text-gray-700 shadow-md hover:shadow-lg transition-shadow cursor-pointer"
           >
             العودة للوحة 🏠

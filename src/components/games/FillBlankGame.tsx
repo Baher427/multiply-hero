@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Clock, Zap, Star, Delete } from 'lucide-react';
+import { useSound } from '@/hooks/use-sound';
 
 interface FillBlankGameProps {
   questions: Array<{
@@ -39,6 +40,7 @@ export default function FillBlankGame({
   onComplete,
   onBack,
 }: FillBlankGameProps) {
+  const { play: playSound } = useSound();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
@@ -112,10 +114,13 @@ export default function FillBlankGame({
       if (newCombo > bestCombo) setBestCombo(newCombo);
       setFeedbackType('correct');
       setPointsAnimation({ points, key: Date.now() });
+      playSound('correct');
+      if (newCombo >= 3) playSound('combo');
     } else {
       setWrongCount((prev) => prev + 1);
       setCombo(0);
       setFeedbackType('wrong');
+      playSound('wrong');
     }
 
     setTimeout(() => {
@@ -141,11 +146,13 @@ export default function FillBlankGame({
   const handleNumberPress = (num: number) => {
     if (showFeedback) return;
     if (input.length >= 3) return; // Max 3 digits
+    playSound('click');
     setInput((prev) => prev + num.toString());
   };
 
   const handleDelete = () => {
     if (showFeedback) return;
+    playSound('click');
     setInput((prev) => prev.slice(0, -1));
   };
 
@@ -186,7 +193,7 @@ export default function FillBlankGame({
         <Button
           variant="ghost"
           size="sm"
-          onClick={onBack}
+          onClick={() => { playSound('click'); onBack(); }}
           className="text-gray-500 hover:text-gray-700"
         >
           رجوع
