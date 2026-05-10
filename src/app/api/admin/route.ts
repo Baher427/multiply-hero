@@ -16,9 +16,11 @@ export async function GET() {
     const totalBadges = await db.badge.count();
 
     // Calculate average mastery across all children
+    // Normalize masteryLevel to 0-1 range (seed data may use 0-100 scale)
+    const normalizeMastery = (m: number) => m > 1 ? m / 100 : m;
     const allProgress = await db.tableProgress.findMany();
     const avgMastery = allProgress.length > 0
-      ? Math.round(allProgress.reduce((s, p) => s + p.masteryLevel, 0) / allProgress.length)
+      ? Math.round(allProgress.reduce((s, p) => s + normalizeMastery(p.masteryLevel), 0) / allProgress.length * 100)
       : 0;
 
     // Find table stats (average mastery per table 1-9)
@@ -26,7 +28,7 @@ export async function GET() {
     for (let t = 1; t <= 9; t++) {
       const tableProg = allProgress.filter(p => p.tableNumber === t);
       const avgTableMastery = tableProg.length > 0
-        ? Math.round(tableProg.reduce((s, p) => s + p.masteryLevel, 0) / tableProg.length)
+        ? Math.round(tableProg.reduce((s, p) => s + normalizeMastery(p.masteryLevel), 0) / tableProg.length * 100)
         : 0;
       const totalWrong = tableProg.reduce((s, p) => s + p.wrongAnswers, 0);
       const totalCorrect = tableProg.reduce((s, p) => s + p.correctAnswers, 0);

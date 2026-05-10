@@ -16,7 +16,9 @@ export type AppView =
   | 'parent'
   | 'settings'
   | 'leaderboard'
-  | 'shop';
+  | 'shop'
+  | 'practice'
+  | 'speed-test';
 
 // ===== Game Types =====
 export type GameType = 'multiple-choice' | 'true-false' | 'matching' | 'fill-blank';

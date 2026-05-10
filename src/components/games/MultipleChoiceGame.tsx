@@ -35,6 +35,67 @@ const ENCOURAGING_MESSAGES = [
   'أنت قريب جداً! 🎯',
 ];
 
+// Particle burst component for correct answers
+function ParticleBurst({ x, y }: { x: number; y: number }) {
+  const particles = useMemo(() =>
+    Array.from({ length: 12 }, (_, i) => ({
+      id: i,
+      angle: (i * 30) * (Math.PI / 180),
+      distance: 40 + (i % 3) * 20,
+      size: 4 + (i % 3) * 3,
+      color: ['#34d399', '#fbbf24', '#a78bfa', '#f472b6', '#fb923c', '#38bdf8'][i % 6],
+    })), []
+  );
+
+  return (
+    <div className="fixed pointer-events-none z-50" style={{ left: x, top: y }}>
+      {particles.map(p => (
+        <motion.div
+          key={p.id}
+          className="absolute rounded-full"
+          style={{
+            width: p.size,
+            height: p.size,
+            backgroundColor: p.color,
+            left: -p.size / 2,
+            top: -p.size / 2,
+          }}
+          initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
+          animate={{
+            x: Math.cos(p.angle) * p.distance,
+            y: Math.sin(p.angle) * p.distance,
+            opacity: 0,
+            scale: 0,
+          }}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// Progress Ring component
+function ProgressRing({ current, total }: { current: number; total: number }) {
+  const radius = 18;
+  const circumference = 2 * Math.PI * radius;
+  const progress = ((current) / total) * circumference;
+
+  return (
+    <div className="relative w-12 h-12 flex items-center justify-center">
+      <svg width="48" height="48" className="-rotate-90">
+        <circle cx="24" cy="24" r={radius} fill="none" stroke="currentColor" strokeWidth="3" className="text-purple-200" />
+        <motion.circle
+          cx="24" cy="24" r={radius} fill="none" stroke="#a855f7" strokeWidth="3"
+          strokeLinecap="round" strokeDasharray={circumference}
+          animate={{ strokeDashoffset: circumference - progress }}
+          transition={{ duration: 0.5, ease: 'easeOut' }}
+        />
+      </svg>
+      <span className="absolute text-[10px] font-bold text-purple-700">{current}/{total}</span>
+    </div>
+  );
+}
+
 export default function MultipleChoiceGame({
   questions,
   onComplete,
@@ -52,6 +113,8 @@ export default function MultipleChoiceGame({
   const [timeLeft, setTimeLeft] = useState(100);
   const [startTime] = useState(Date.now());
   const [pointsAnimation, setPointsAnimation] = useState<{ points: number; key: number } | null>(null);
+  const [particlePos, setParticlePos] = useState<{ x: number; y: number } | null>(null);
+  const [shakeScreen, setShakeScreen] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const questionTimeRef = useRef(100);
   const { play: playSound } = useSound();
@@ -93,7 +156,7 @@ export default function MultipleChoiceGame({
     };
   }, [currentIndex]);
 
-  const handleAnswer = (answer: number) => {
+  const handleAnswer = (answer: number, event?: React.MouseEvent) => {
     if (showFeedback) return;
     if (timerRef.current) clearInterval(timerRef.current);
 
@@ -113,11 +176,21 @@ export default function MultipleChoiceGame({
       if (newCombo > bestCombo) setBestCombo(newCombo);
       setFeedbackType('correct');
       setPointsAnimation({ points, key: Date.now() });
+
+      // Particle burst from click position
+      if (event) {
+        setParticlePos({ x: event.clientX, y: event.clientY });
+        setTimeout(() => setParticlePos(null), 700);
+      }
+
       if (newCombo >= 3) { playSound('combo'); } else { playSound('correct'); }
     } else {
       setWrongCount((prev) => prev + 1);
       setCombo(0);
       setFeedbackType('wrong');
+      // Screen shake
+      setShakeScreen(true);
+      setTimeout(() => setShakeScreen(false), 400);
       playSound('wrong');
     }
 
@@ -139,19 +212,75 @@ export default function MultipleChoiceGame({
     if (timeLeft <= 0 && !showFeedback) {
       handleAnswer(-1);
     }
-  }, [timeLeft]);
+  }, [timeLeft, showFeedback, handleAnswer]);
 
   const getTimerColor = () => {
-    if (timeLeft > 60) return 'bg-emerald-400';
-    if (timeLeft > 30) return 'bg-amber-400';
-    return 'bg-red-400';
+    if (timeLeft > 60) return 'from-emerald-400 to-green-500';
+    if (timeLeft > 30) return 'from-amber-400 to-yellow-500';
+    return 'from-red-400 to-rose-500';
+  };
+
+  const getTimerBg = () => {
+    if (timeLeft > 60) return 'bg-emerald-200';
+    if (timeLeft > 30) return 'bg-amber-200';
+    return 'bg-red-200';
   };
 
   const randomEmoji = useMemo(() => CELEBRATION_EMOJIS[Math.floor(Math.random() * CELEBRATION_EMOJIS.length)], [currentIndex]);
   const randomEncouraging = useMemo(() => ENCOURAGING_MESSAGES[Math.floor(Math.random() * ENCOURAGING_MESSAGES.length)], [currentIndex]);
 
+  const optionGradients = [
+    'from-pink-400 to-rose-500',
+    'from-teal-400 to-cyan-500',
+    'from-amber-400 to-orange-500',
+    'from-violet-400 to-purple-500',
+  ];
+
   return (
-    <div dir="rtl" className="flex flex-col min-h-screen bg-gradient-to-b from-purple-50 to-orange-50 p-4 max-w-lg mx-auto">
+    <motion.div
+      dir="rtl"
+      animate={shakeScreen ? { x: [-8, 8, -6, 6, -3, 3, 0] } : { x: 0 }}
+      transition={{ duration: 0.4 }}
+      className="flex flex-col min-h-screen p-4 max-w-lg mx-auto relative overflow-hidden"
+      style={{
+        background: feedbackType === 'correct'
+          ? 'linear-gradient(to bottom, #ecfdf5, #d1fae5, #a7f3d0)'
+          : feedbackType === 'wrong'
+          ? 'linear-gradient(to bottom, #fef2f2, #fecaca, #fca5a5)'
+          : 'linear-gradient(to bottom, #faf5ff, #fff7ed)',
+      }}
+    >
+      {/* Particle burst */}
+      <AnimatePresence>
+        {particlePos && <ParticleBurst x={particlePos.x} y={particlePos.y} />}
+      </AnimatePresence>
+
+      {/* Green glow overlay for correct */}
+      <AnimatePresence>
+        {feedbackType === 'correct' && (
+          <motion.div
+            className="fixed inset-0 pointer-events-none z-40"
+            style={{ background: 'radial-gradient(circle at center, rgba(52, 211, 153, 0.3) 0%, transparent 70%)' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 1, 0] }}
+            transition={{ duration: 0.8 }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Red pulse overlay for wrong */}
+      <AnimatePresence>
+        {feedbackType === 'wrong' && (
+          <motion.div
+            className="fixed inset-0 pointer-events-none z-40"
+            style={{ background: 'radial-gradient(circle at center, rgba(239, 68, 68, 0.2) 0%, transparent 70%)' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 0.8, 0] }}
+            transition={{ duration: 0.5 }}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <Button
@@ -164,6 +293,7 @@ export default function MultipleChoiceGame({
           <ArrowRight className="w-4 h-4 mr-1" />
         </Button>
         <div className="flex items-center gap-3">
+          <ProgressRing current={currentIndex} total={totalQuestions} />
           {combo > 1 && (
             <motion.div
               initial={{ scale: 0 }}
@@ -181,52 +311,56 @@ export default function MultipleChoiceGame({
         </div>
       </div>
 
-      {/* Timer bar */}
-      <div className="w-full h-3 bg-gray-200 rounded-full mb-4 overflow-hidden">
+      {/* Timer bar with gradient */}
+      <div className={`w-full h-3 rounded-full mb-4 overflow-hidden ${getTimerBg()}`}>
         <motion.div
-          className={`h-full rounded-full ${getTimerColor()}`}
+          className={`h-full rounded-full bg-gradient-to-l ${getTimerColor()} relative`}
           animate={{ width: `${timeLeft}%` }}
           transition={{ duration: 0.3 }}
-        />
+        >
+          {/* Shimmer */}
+          <motion.div
+            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+            animate={{ x: ['-100%', '200%'] }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+          />
+        </motion.div>
       </div>
 
-      {/* Progress */}
-      <div className="flex items-center justify-between mb-4 text-sm text-gray-500">
-        <span>
-          السؤال {currentIndex + 1} من {totalQuestions}
-        </span>
-        <div className="flex gap-1">
-          {Array.from({ length: totalQuestions }, (_, i) => (
-            <div
-              key={i}
-              className={`w-2 h-2 rounded-full ${
-                i < currentIndex
-                  ? 'bg-emerald-400'
-                  : i === currentIndex
-                  ? 'bg-purple-400'
-                  : 'bg-gray-200'
-              }`}
-            />
-          ))}
-        </div>
+      {/* Progress dots */}
+      <div className="flex items-center justify-center gap-1.5 mb-4">
+        {Array.from({ length: totalQuestions }, (_, i) => (
+          <motion.div
+            key={i}
+            className={`rounded-full ${
+              i < currentIndex
+                ? 'bg-emerald-400 w-3 h-3'
+                : i === currentIndex
+                ? 'bg-purple-500 w-4 h-4'
+                : 'bg-gray-200 w-2.5 h-2.5'
+            }`}
+            animate={i === currentIndex ? { scale: [1, 1.3, 1] } : {}}
+            transition={{ duration: 0.5, repeat: i === currentIndex ? Infinity : 0, repeatDelay: 1 }}
+          />
+        ))}
       </div>
 
       {/* Question Card */}
       <AnimatePresence mode="wait">
         <motion.div
           key={currentQuestion.id}
-          initial={{ x: -100, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          exit={{ x: 100, opacity: 0 }}
+          initial={{ x: -100, opacity: 0, scale: 0.9 }}
+          animate={{ x: 0, opacity: 1, scale: 1 }}
+          exit={{ x: 100, opacity: 0, scale: 0.9 }}
           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         >
           <Card
-            className={`p-8 mb-6 text-center transition-colors duration-300 ${
+            className={`p-8 mb-6 text-center transition-all duration-300 relative overflow-hidden ${
               feedbackType === 'correct'
-                ? 'bg-emerald-50 border-emerald-300'
+                ? 'bg-emerald-50 border-emerald-300 shadow-lg shadow-emerald-200/50'
                 : feedbackType === 'wrong'
-                ? 'bg-red-50 border-red-300'
-                : 'bg-white border-purple-200'
+                ? 'bg-red-50 border-red-300 shadow-lg shadow-red-200/50'
+                : 'bg-white/80 backdrop-blur-sm border-purple-200 shadow-lg'
             }`}
           >
             <div className="flex items-center justify-center gap-2 mb-2">
@@ -262,13 +396,14 @@ export default function MultipleChoiceGame({
               )}
             </AnimatePresence>
 
-            {/* Feedback message */}
+            {/* Animated emoji reaction */}
             <AnimatePresence>
               {feedbackType === 'correct' && (
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.5 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0 }}
+                  initial={{ opacity: 0, scale: 0, y: 20 }}
+                  animate={{ opacity: 1, scale: [0, 1.5, 1], y: 0 }}
+                  exit={{ opacity: 0, scale: 0, y: -20 }}
+                  transition={{ duration: 0.5 }}
                   className="mt-3"
                 >
                   <span className="text-4xl">{randomEmoji}</span>
@@ -293,46 +428,61 @@ export default function MultipleChoiceGame({
         </motion.div>
       </AnimatePresence>
 
-      {/* Answer Options */}
+      {/* Answer Options with gradients */}
       <div className="grid grid-cols-2 gap-4 flex-1">
         {currentQuestion.options.map((option, index) => {
           const isSelected = selectedAnswer === option;
           const isCorrectOption = option === currentQuestion.correctAnswer;
-          let buttonStyle = 'bg-white border-2 border-gray-200 hover:border-purple-300 hover:bg-purple-50';
+          let cardStyle = '';
 
           if (showFeedback) {
             if (isCorrectOption) {
-              buttonStyle = 'bg-emerald-100 border-2 border-emerald-400 text-emerald-700';
+              cardStyle = 'bg-gradient-to-br from-emerald-100 to-green-200 border-2 border-emerald-400 text-emerald-700 shadow-lg shadow-emerald-200/50';
             } else if (isSelected && !isCorrectOption) {
-              buttonStyle = 'bg-red-100 border-2 border-red-400 text-red-700';
+              cardStyle = 'bg-gradient-to-br from-red-100 to-rose-200 border-2 border-red-400 text-red-700 shadow-lg shadow-red-200/50';
             } else {
-              buttonStyle = 'bg-gray-50 border-2 border-gray-200 text-gray-400';
+              cardStyle = 'bg-gray-50 border-2 border-gray-200 text-gray-400';
             }
+          } else {
+            cardStyle = `bg-gradient-to-br ${optionGradients[index]} text-white border-2 border-transparent shadow-lg hover:shadow-xl`;
           }
-
-          const colors = [
-            'hover:shadow-pink-200',
-            'hover:shadow-teal-200',
-            'hover:shadow-amber-200',
-            'hover:shadow-violet-200',
-          ];
 
           return (
             <motion.button
               key={`${currentQuestion.id}-${option}`}
-              whileHover={!showFeedback ? { scale: 1.05 } : {}}
-              whileTap={!showFeedback ? { scale: 0.95 } : {}}
-              onClick={() => handleAnswer(option)}
+              whileHover={!showFeedback ? { scale: 1.06, y: -2 } : {}}
+              whileTap={!showFeedback ? { scale: 0.94 } : {}}
+              onClick={(e) => handleAnswer(option, e)}
               disabled={showFeedback}
-              className={`rounded-2xl p-6 text-3xl font-bold transition-all duration-200 shadow-md ${buttonStyle} ${colors[index]} ${
-                !showFeedback ? 'cursor-pointer active:shadow-lg' : 'cursor-default'
-              }`}
+              className={`rounded-2xl p-6 text-3xl font-bold transition-all duration-200 ${cardStyle} ${
+                !showFeedback ? 'cursor-pointer' : 'cursor-default'
+              } relative overflow-hidden`}
             >
-              {option}
+              {/* Hover shine effect */}
+              {!showFeedback && (
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"
+                  initial={{ opacity: 0 }}
+                  whileHover={{ opacity: 1 }}
+                  transition={{ duration: 0.2 }}
+                />
+              )}
+              {/* Correct answer checkmark */}
+              {showFeedback && isCorrectOption && (
+                <motion.div
+                  className="absolute top-2 left-2"
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: 'spring', stiffness: 300 }}
+                >
+                  ✅
+                </motion.div>
+              )}
+              <span className="relative z-10">{option}</span>
             </motion.button>
           );
         })}
       </div>
-    </div>
+    </motion.div>
   );
 }

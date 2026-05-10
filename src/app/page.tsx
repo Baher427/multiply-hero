@@ -32,6 +32,8 @@ import AICoach from '@/components/shared/AICoach';
 import SoundToggle from '@/components/shared/SoundToggle';
 import LeaderboardPage from '@/components/leaderboard/LeaderboardPage';
 import ShopPage from '@/components/shop/ShopPage';
+import PracticeMode from '@/components/practice/PracticeMode';
+import SpeedTestPage from '@/components/speedtest/SpeedTestPage';
 
 const AVATAR_MAP: Record<string, string> = {
   lion: '🦁', cat: '🐱', bear: '🐻', rabbit: '🐰', elephant: '🐘',
@@ -55,6 +57,8 @@ const AUTH_REQUIRED_VIEWS: AppView[] = [
   'settings',
   'leaderboard',
   'shop',
+  'practice',
+  'speed-test',
 ];
 
 export default function Home() {
@@ -499,6 +503,8 @@ export default function Home() {
             onSettings={() => navigate('settings')}
             onLeaderboard={() => navigate('leaderboard')}
             onShop={() => navigate('shop')}
+            onPractice={() => navigate('practice')}
+            onSpeedTest={() => navigate('speed-test')}
             onBack={() => {
               handleLogout();
             }}
@@ -650,6 +656,57 @@ export default function Home() {
             }}
             onBack={() => navigate('dashboard')}
             onPurchase={handleShopPurchase}
+          />
+        ) : null;
+
+      case 'practice':
+        return selectedChild && isAuthenticated ? (
+          <PracticeMode
+            currentChild={{
+              id: selectedChild.id,
+              name: selectedChild.name,
+              displayName: selectedChild.displayName,
+              avatarId: selectedChild.avatarId,
+              points: selectedChild.points,
+              level: selectedChild.level,
+            }}
+            tableProgress={tableProgress}
+            onBack={() => navigate('dashboard')}
+            onStartGame={(gameType, tableNumber, difficulty) => {
+              handleStartGame(gameType, tableNumber, difficulty);
+            }}
+          />
+        ) : null;
+
+      case 'speed-test':
+        return isAuthenticated ? (
+          <SpeedTestPage
+            onBack={() => navigate('dashboard')}
+            onComplete={(result) => {
+              // Save the speed test result as a game session
+              const enrichedResult = {
+                ...result,
+                pointsEarned: result.score,
+                starsEarned: 0,
+                coinsEarned: Math.round(result.correctCount * 3),
+                gemsEarned: 0,
+              };
+              setGameResult(enrichedResult);
+              // Set a game config for the speed test so saveGameSession works
+              const speedTestConfig: GameConfig = {
+                gameType: 'multiple-choice' as any,
+                tableNumber: 'mixed',
+                questionCount: result.correctCount + result.wrongCount,
+                difficulty: 'medium',
+              };
+              setGameConfig(speedTestConfig);
+              // Save to database if child is selected
+              if (selectedChild) {
+                // Need to set config first then save on next tick
+                setTimeout(() => saveGameSession(enrichedResult), 0);
+              }
+              navigate('game-results');
+            }}
           />
         ) : null;
 

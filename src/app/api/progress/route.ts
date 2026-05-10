@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
+// Normalize masteryLevel to 0-1 range
+// Seed data may use 0-100 scale while game API saves in 0-1 scale
+function normalizeMastery(masteryLevel: number): number {
+  if (masteryLevel > 1) return masteryLevel / 100;
+  return masteryLevel;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -15,7 +22,13 @@ export async function GET(req: NextRequest) {
       orderBy: { tableNumber: 'asc' },
     });
 
-    return NextResponse.json({ success: true, data: progress });
+    // Normalize masteryLevel to always be in 0-1 range
+    const normalized = progress.map(p => ({
+      ...p,
+      masteryLevel: normalizeMastery(p.masteryLevel),
+    }));
+
+    return NextResponse.json({ success: true, data: normalized });
   } catch (error) {
     return NextResponse.json({ success: false, error: 'Failed to fetch progress' }, { status: 500 });
   }
@@ -42,10 +55,8 @@ export async function PUT(req: NextRequest) {
     const newWrong = existing.wrongAnswers + (wrong || 0);
     const newTotal = existing.totalAttempts + (correct || 0) + (wrong || 0);
     
-    // Calculate mastery level
-    const accuracy = newTotal > 0 ? newCorrect / newTotal : 0;
-    const speedFactor = speed ? Math.max(0, 1 - (speed / 10000)) : 0.5;
-    const masteryLevel = Math.min(1, accuracy * 0.8 + speedFactor * 0.2);
+    // Calculate mastery level as correctAnswers / totalAttempts (0-1 range)
+    const masteryLevel = newTotal > 0 ? newCorrect / newTotal : 0;
     
     // Calculate average speed
     const newAvgSpeed = speed 

@@ -764,7 +764,7 @@ export default function LandingPage({ onStart, onAdmin, onParent }: LandingPageP
               >
                 {/* Pulsing glow behind button */}
                 <motion.div
-                  className="absolute inset-0 -m-3 rounded-3xl"
+                  className="pointer-events-none absolute inset-0 -m-3 rounded-3xl"
                   style={{
                     background: 'linear-gradient(135deg, rgba(251,191,36,0.4), rgba(245,158,11,0.4))',
                     filter: 'blur(16px)',
@@ -774,19 +774,21 @@ export default function LandingPage({ onStart, onAdmin, onParent }: LandingPageP
                 />
 
                 {/* Confetti particles on hover */}
-                <AnimatePresence>
-                  {showConfetti && (
-                    <>
-                      {confettiColors.map((color, i) => (
-                        <ConfettiParticle key={i} delay={i * 0.03} color={color} />
-                      ))}
-                    </>
-                  )}
-                </AnimatePresence>
+                <div className="pointer-events-none absolute inset-0">
+                  <AnimatePresence>
+                    {showConfetti && (
+                      <>
+                        {confettiColors.map((color, i) => (
+                          <ConfettiParticle key={i} delay={i * 0.03} color={color} />
+                        ))}
+                      </>
+                    )}
+                  </AnimatePresence>
+                </div>
 
                 <Button
                   onClick={onStart}
-                  className="relative h-16 rounded-3xl border-2 border-amber-300/50 bg-gradient-to-l from-amber-400 via-yellow-400 to-amber-500 px-10 text-xl font-extrabold text-emerald-900 shadow-2xl transition-all sm:h-18 sm:text-2xl md:h-20 md:px-14 md:text-3xl"
+                  className="relative z-10 h-16 rounded-3xl border-2 border-amber-300/50 bg-gradient-to-l from-amber-400 via-yellow-400 to-amber-500 px-10 text-xl font-extrabold text-emerald-900 shadow-2xl transition-all sm:h-18 sm:text-2xl md:h-20 md:px-14 md:text-3xl"
                   style={{
                     textShadow: '0 1px 2px rgba(0,0,0,0.1)',
                     boxShadow:

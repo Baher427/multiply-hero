@@ -188,14 +188,14 @@ const GAME_TYPE_ICONS: Record<string, string> = {
 };
 
 function getMasteryColor(mastery: number): string {
-  if (mastery >= 80) return 'bg-green-500';
-  if (mastery >= 40) return 'bg-amber-500';
+  if (mastery >= 0.8) return 'bg-green-500';
+  if (mastery >= 0.4) return 'bg-amber-500';
   return 'bg-red-500';
 }
 
 function getMasteryBg(mastery: number): string {
-  if (mastery >= 80) return 'bg-green-50 border-green-200';
-  if (mastery >= 40) return 'bg-amber-50 border-amber-200';
+  if (mastery >= 0.8) return 'bg-green-50 border-green-200';
+  if (mastery >= 0.4) return 'bg-amber-50 border-amber-200';
   return 'bg-red-50 border-red-200';
 }
 
@@ -848,12 +848,12 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
                         <div className="text-2xl font-black text-slate-800">×{tableNum}</div>
                         <div className="mt-2">
                           <Progress
-                            value={mastery}
+                            value={mastery * 100}
                             className="h-2 bg-slate-200"
                           />
                         </div>
-                        <div className={`text-sm font-bold mt-1 ${mastery >= 80 ? 'text-green-600' : mastery >= 40 ? 'text-amber-600' : 'text-red-600'}`}>
-                          {Math.round(mastery)}%
+                        <div className={`text-sm font-bold mt-1 ${mastery >= 0.8 ? 'text-green-600' : mastery >= 0.4 ? 'text-amber-600' : 'text-red-600'}`}>
+                          {Math.round(mastery * 100)}%
                         </div>
                         {prog && (
                           <div className="text-[10px] text-slate-500 mt-1">

@@ -31,6 +31,79 @@ interface MatchLine {
   toIndex: number;
 }
 
+// Sparkle effect component for matched pairs
+function SparkleEffect({ x, y }: { x: number; y: number }) {
+  const sparkles = Array.from({ length: 6 }, (_, i) => ({
+    id: i,
+    angle: i * 60 * (Math.PI / 180),
+    distance: 15 + i * 5,
+  }));
+
+  return (
+    <div className="absolute pointer-events-none" style={{ left: x, top: y }}>
+      {sparkles.map(s => (
+        <motion.div
+          key={s.id}
+          className="absolute"
+          initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
+          animate={{
+            x: Math.cos(s.angle) * s.distance,
+            y: Math.sin(s.angle) * s.distance,
+            opacity: 0,
+            scale: 0,
+          }}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
+        >
+          <svg width="8" height="8" viewBox="0 0 24 24" fill="#fbbf24">
+            <path d="M12 0L14.59 8.41L23 12L14.59 15.59L12 24L9.41 15.59L1 12L9.41 8.41Z" />
+          </svg>
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
+// Celebration animation for completing all matches
+function CelebrationOverlay() {
+  return (
+    <motion.div
+      className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+    >
+      <motion.div
+        initial={{ scale: 0 }}
+        animate={{ scale: [0, 1.5, 1] }}
+        transition={{ duration: 0.8, type: 'spring', stiffness: 200 }}
+        className="text-8xl"
+      >
+        🎉
+      </motion.div>
+      {/* Flying particles */}
+      {Array.from({ length: 20 }, (_, i) => (
+        <motion.div
+          key={i}
+          className="absolute w-3 h-3 rounded-full"
+          style={{
+            backgroundColor: ['#f472b6', '#34d399', '#fbbf24', '#a78bfa', '#fb923c', '#38bdf8'][i % 6],
+            left: '50%',
+            top: '50%',
+          }}
+          initial={{ x: 0, y: 0, opacity: 1 }}
+          animate={{
+            x: (Math.cos(i * 36 * Math.PI / 180) * (80 + (i % 3) * 40)),
+            y: (Math.sin(i * 36 * Math.PI / 180) * (80 + (i % 3) * 40)),
+            opacity: 0,
+            scale: 0,
+          }}
+          transition={{ duration: 1, delay: i * 0.03, ease: 'easeOut' }}
+        />
+      ))}
+    </motion.div>
+  );
+}
+
 export default function MatchingGame({
   questions,
   onComplete,
@@ -50,6 +123,8 @@ export default function MatchingGame({
   const [startTime] = useState(Date.now());
   const [wrongPair, setWrongPair] = useState<{ left: number; right: number } | null>(null);
   const [lastMatched, setLastMatched] = useState<number | null>(null);
+  const [sparklePos, setSparklePos] = useState<{ x: number; y: number } | null>(null);
+  const [showCelebration, setShowCelebration] = useState(false);
   const leftRefs = useRef<(HTMLDivElement | null)[]>([]);
   const rightRefs = useRef<(HTMLDivElement | null)[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -87,6 +162,7 @@ export default function MatchingGame({
   useEffect(() => {
     if (matchedPairs.size === questions.length * 2 && questions.length > 0 && !completedRef.current) {
       completedRef.current = true;
+      setShowCelebration(true);
       playSound('gameOver');
       const duration = Math.round((Date.now() - startTime) / 1000);
       setTimeout(() => {
@@ -98,9 +174,9 @@ export default function MatchingGame({
           bestCombo,
           duration,
         });
-      }, 800);
+      }, 1200);
     }
-  }, [matchedPairs.size, questions.length, score, correctCount, wrongCount, combo, bestCombo, startTime, onComplete]);
+  }, [matchedPairs.size, questions.length, score, correctCount, wrongCount, combo, bestCombo, startTime, onComplete, playSound]);
 
   // Time up
   useEffect(() => {
@@ -145,6 +221,19 @@ export default function MatchingGame({
       setCombo(newCombo);
       if (newCombo > bestCombo) setBestCombo(newCombo);
       setLastMatched(selectedLeft);
+
+      // Sparkle effect at right card position
+      const rightEl = rightRefs.current[shuffledIndex];
+      if (rightEl && containerRef.current) {
+        const containerRect = containerRef.current.getBoundingClientRect();
+        const rightRect = rightEl.getBoundingClientRect();
+        setSparklePos({
+          x: rightRect.left - containerRect.left + rightRect.width / 2,
+          y: rightRect.top - containerRect.top + rightRect.height / 2,
+        });
+        setTimeout(() => setSparklePos(null), 700);
+      }
+
       setTimeout(() => setLastMatched(null), 600);
       playSound('match');
     } else {
@@ -170,7 +259,13 @@ export default function MatchingGame({
     return 'text-red-500';
   };
 
-  // Calculate SVG lines between matched pairs
+  const getTimerGradient = () => {
+    if (timeLeft > 80) return 'from-emerald-400 to-green-500';
+    if (timeLeft > 40) return 'from-amber-400 to-yellow-500';
+    return 'from-red-400 to-rose-500';
+  };
+
+  // Calculate SVG lines between matched pairs with glow
   const renderLines = () => {
     if (!containerRef.current) return null;
 
@@ -191,35 +286,57 @@ export default function MatchingGame({
       const y2 = rightRect.top - containerRect.top + rightRect.height / 2;
 
       return (
-        <motion.line
-          key={`line-${idx}`}
-          x1={x1}
-          y1={y1}
-          x2={x2}
-          y2={y2}
-          stroke="#10b981"
-          strokeWidth={3}
-          strokeLinecap="round"
-          strokeDasharray="8 4"
-          initial={{ pathLength: 0, opacity: 0 }}
-          animate={{ pathLength: 1, opacity: 1 }}
-          transition={{ duration: 0.5 }}
-        />
+        <g key={`line-${idx}`}>
+          {/* Glow effect */}
+          <motion.line
+            x1={x1} y1={y1} x2={x2} y2={y2}
+            stroke="#34d399" strokeWidth={8} strokeLinecap="round"
+            strokeDasharray="8 4"
+            initial={{ opacity: 0 }} animate={{ opacity: 0.3 }}
+            transition={{ duration: 0.5 }}
+            filter="url(#glow)"
+          />
+          {/* Main line */}
+          <motion.line
+            x1={x1} y1={y1} x2={x2} y2={y2}
+            stroke="#10b981" strokeWidth={3} strokeLinecap="round"
+            strokeDasharray="8 4"
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 1 }}
+            transition={{ duration: 0.5 }}
+          />
+        </g>
       );
     });
   };
 
   const expressionColors = [
-    'bg-pink-50 border-pink-300 text-pink-700',
-    'bg-teal-50 border-teal-300 text-teal-700',
-    'bg-amber-50 border-amber-300 text-amber-700',
-    'bg-violet-50 border-violet-300 text-violet-700',
-    'bg-emerald-50 border-emerald-300 text-emerald-700',
-    'bg-rose-50 border-rose-300 text-rose-700',
+    'from-pink-400 to-rose-500',
+    'from-teal-400 to-cyan-500',
+    'from-amber-400 to-orange-500',
+    'from-violet-400 to-purple-500',
+    'from-emerald-400 to-green-500',
+    'from-rose-400 to-pink-500',
   ];
 
+  const expressionBorderColors = [
+    'border-pink-300',
+    'border-teal-300',
+    'border-amber-300',
+    'border-violet-300',
+    'border-emerald-300',
+    'border-rose-300',
+  ];
+
+  const matchedPairsCount = Math.floor(matchedPairs.size / 2);
+
   return (
-    <div dir="rtl" className="flex flex-col min-h-screen bg-gradient-to-b from-amber-50 to-pink-50 p-4 max-w-2xl mx-auto">
+    <div dir="rtl" className="flex flex-col min-h-screen bg-gradient-to-b from-amber-50 via-orange-50 to-pink-50 p-4 max-w-2xl mx-auto relative">
+      {/* Celebration overlay */}
+      <AnimatePresence>
+        {showCelebration && <CelebrationOverlay />}
+      </AnimatePresence>
+
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <Button
@@ -246,18 +363,31 @@ export default function MatchingGame({
             <Star className="w-4 h-4" />
             {score}
           </div>
-          <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm font-bold ${getTimerColor()} bg-gray-100`}>
-            🕐 {formatTime(timeLeft)}
+          {/* Timer with animated gradient */}
+          <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm font-bold bg-gray-100 ${getTimerColor()}`}>
+            <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${getTimerGradient()}`}
+              style={{ animation: timeLeft <= 30 ? 'pulse 1s infinite' : 'none' }}
+            />
+            {formatTime(timeLeft)}
           </div>
         </div>
       </div>
 
       {/* Progress */}
-      <div className="flex items-center justify-center gap-2 mb-4">
+      <div className="flex items-center justify-center gap-2 mb-3">
         <LinkIcon className="w-4 h-4 text-amber-500" />
         <span className="text-sm text-gray-500">
-          صِل العبارة بالإجابة الصحيحة ({matchedPairs.size / 2 > questions.length ? questions.length : Math.floor(matchedPairs.size / 2)} / {questions.length})
+          صِل العبارة بالإجابة الصحيحة ({matchedPairsCount} / {questions.length})
         </span>
+      </div>
+
+      {/* Progress bar */}
+      <div className="w-full h-2 bg-gray-200 rounded-full mb-4 overflow-hidden">
+        <motion.div
+          className="h-full rounded-full bg-gradient-to-l from-amber-400 to-orange-500"
+          animate={{ width: `${(matchedPairsCount / questions.length) * 100}%` }}
+          transition={{ duration: 0.5, ease: 'easeOut' }}
+        />
       </div>
 
       {/* Instruction */}
@@ -276,10 +406,24 @@ export default function MatchingGame({
 
       {/* Game Board */}
       <div className="relative flex-1" ref={containerRef}>
-        {/* SVG for connection lines */}
+        {/* SVG for connection lines with glow filter */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none z-10">
+          <defs>
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="4" result="coloredBlur" />
+              <feMerge>
+                <feMergeNode in="coloredBlur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
           {renderLines()}
         </svg>
+
+        {/* Sparkle effect */}
+        <AnimatePresence>
+          {sparklePos && <SparkleEffect x={sparklePos.x} y={sparklePos.y} />}
+        </AnimatePresence>
 
         <div className="grid grid-cols-2 gap-4 h-full">
           {/* Right column - Expressions (RTL: right side) */}
@@ -296,24 +440,36 @@ export default function MatchingGame({
                   ref={(el) => { leftRefs.current[index] = el; }}
                   initial={{ opacity: 0, x: 50 }}
                   animate={{
-                    opacity: isMatched ? 0.3 : 1,
+                    opacity: isMatched ? 0.35 : 1,
                     x: 0,
-                    scale: isLastMatched ? [1, 1.1, 1] : isSelected ? 1.05 : 1,
+                    scale: isLastMatched ? [1, 1.12, 1] : isSelected ? 1.06 : 1,
                   }}
                   exit={{ opacity: 0, scale: 0.8 }}
                   transition={{ duration: 0.3 }}
                   onClick={() => !isMatched && handleLeftClick(index)}
-                  className={`rounded-2xl p-4 text-center text-xl font-bold border-2 transition-colors cursor-pointer ${
+                  className={`rounded-2xl p-4 text-center text-xl font-bold border-2 transition-all cursor-pointer relative overflow-hidden ${
                     isMatched
                       ? 'bg-gray-100 border-gray-300 text-gray-400 line-through'
                       : isWrong
                       ? 'bg-red-50 border-red-400 text-red-600'
                       : isSelected
-                      ? 'bg-amber-100 border-amber-400 text-amber-700 shadow-lg'
-                      : `${expressionColors[index % expressionColors.length]} shadow-md hover:shadow-lg`
+                      ? `bg-gradient-to-br ${expressionColors[index % expressionColors.length]} text-white border-white/50 shadow-lg shadow-amber-200/50`
+                      : `bg-gradient-to-br ${expressionColors[index % expressionColors.length]} text-white ${expressionBorderColors[index % expressionBorderColors.length]} shadow-md hover:shadow-lg`
                   }`}
                 >
-                  {q.display}
+                  {/* Pulse animation when selected */}
+                  {isSelected && (
+                    <motion.div
+                      className="absolute inset-0 rounded-2xl border-2 border-white/50"
+                      animate={{ scale: [1, 1.05, 1], opacity: [0.5, 1, 0.5] }}
+                      transition={{ duration: 1, repeat: Infinity }}
+                    />
+                  )}
+                  {/* Shine overlay */}
+                  {!isMatched && (
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-2xl pointer-events-none" />
+                  )}
+                  <span className="relative z-10">{q.display}</span>
                 </motion.div>
               );
             })}
@@ -332,14 +488,14 @@ export default function MatchingGame({
                   ref={(el) => { rightRefs.current[shuffledIndex] = el; }}
                   initial={{ opacity: 0, x: -50 }}
                   animate={{
-                    opacity: isMatched ? 0.3 : 1,
+                    opacity: isMatched ? 0.35 : 1,
                     x: 0,
                     scale: isMatched ? 0.95 : 1,
                   }}
                   exit={{ opacity: 0, scale: 0.8 }}
                   transition={{ duration: 0.3 }}
                   onClick={() => !isMatched && handleRightClick(shuffledIndex)}
-                  className={`rounded-2xl p-4 text-center text-2xl font-extrabold border-2 transition-colors cursor-pointer ${
+                  className={`rounded-2xl p-4 text-center text-2xl font-extrabold border-2 transition-all cursor-pointer relative overflow-hidden ${
                     isMatched
                       ? 'bg-gray-100 border-gray-300 text-gray-400'
                       : isWrong
@@ -347,7 +503,14 @@ export default function MatchingGame({
                       : 'bg-white border-gray-200 text-gray-700 shadow-md hover:shadow-lg hover:border-emerald-300'
                   }`}
                 >
-                  {q.correctAnswer}
+                  {/* Shine overlay for unmatched */}
+                  {!isMatched && (
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-br from-emerald-50/50 to-transparent rounded-2xl pointer-events-none"
+                      whileHover={{ opacity: 1 }}
+                    />
+                  )}
+                  <span className="relative z-10">{q.correctAnswer}</span>
                 </motion.div>
               );
             })}

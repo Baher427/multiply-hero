@@ -61,15 +61,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ chil
       ? Math.round((weekCorrectAnswers / weekTotalQuestions) * 100)
       : 0;
 
-    // Overall mastery
+    // Normalize masteryLevel to 0-1 range (seed data may use 0-100 scale)
+    const normalizeMastery = (m: number) => m > 1 ? m / 100 : m;
+
+    // Overall mastery (as percentage 0-100 for display)
     const overallMastery = child.tableProgress.length > 0
-      ? Math.round(child.tableProgress.reduce((s, p) => s + p.masteryLevel, 0) / child.tableProgress.length)
+      ? Math.round(child.tableProgress.reduce((s, p) => s + normalizeMastery(p.masteryLevel), 0) / child.tableProgress.length * 100)
       : 0;
 
     // Recommendations
     const recommendations: string[] = [];
-    const weakTables = child.tableProgress.filter(p => p.masteryLevel < 40).sort((a, b) => a.masteryLevel - b.masteryLevel);
-    const strongTables = child.tableProgress.filter(p => p.masteryLevel >= 80).sort((a, b) => b.masteryLevel - a.masteryLevel);
+    const weakTables = child.tableProgress.filter(p => normalizeMastery(p.masteryLevel) < 0.4).sort((a, b) => normalizeMastery(a.masteryLevel) - normalizeMastery(b.masteryLevel));
+    const strongTables = child.tableProgress.filter(p => normalizeMastery(p.masteryLevel) >= 0.8).sort((a, b) => normalizeMastery(b.masteryLevel) - normalizeMastery(a.masteryLevel));
 
     if (weakTables.length > 0) {
       recommendations.push(`يجب على طفلك التمرن أكثر على جدول ${weakTables[0].tableNumber} 💪`);

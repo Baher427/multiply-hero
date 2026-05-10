@@ -1,8 +1,156 @@
 # MultiplyHero - Worklog
 
-## Project Status: GITHUB PUSHED ✅ | DATABASE CONFIGURED ✅ | BUG FIXES APPLIED ✅ | PREMIUM STYLING ✅ | LEADERBOARD & SHOP ADDED ✅ | VERCEL DEPLOYMENT PENDING
+## Project Status: GITHUB PUSHED ✅ | DATABASE CONFIGURED ✅ | BUG FIXES APPLIED ✅ | PREMIUM STYLING ✅ | LEADERBOARD & SHOP ADDED ✅ | PRACTICE MODE & SPEED TEST ADDED ✅ | ROUND 2 BUG FIXES & GAME STYLING ✅ | VERCEL DEPLOYMENT PENDING
 
 ### Current Phase: Production Ready - Awaiting Vercel Deployment
+
+---
+
+## Round 2 Bug Fixes & Game Styling Enhancement (2026-03-06)
+
+### Task ID: round2-bugs-styling
+### Agent: Bug Fix & Styling Agent
+
+### Summary: Fixed remaining bugs (mastery level inconsistency, Math.random in render) and enhanced all game component styling with rich animations
+
+### Bug Fixes:
+
+**BUG FIX 1: Seed data mastery level inconsistency**
+- Problem: Seed data uses masteryLevel 0-100 scale (e.g., 78, 90) while game API saves in 0-1 scale (e.g., 0.894). This caused display issues on dashboard, parent dashboard, and admin dashboard.
+- Fixed in `/src/app/api/progress/route.ts`:
+  - GET: Added `normalizeMastery()` function to normalize any masteryLevel > 1 to 0-1 range by dividing by 100
+  - PUT: Changed mastery calculation from weighted formula (`accuracy * 0.8 + speedFactor * 0.2`) to simple `correctAnswers / totalAttempts` which naturally produces 0-1 values
+- Fixed in `/src/app/api/children/[childId]/route.ts`:
+  - Added `normalizeMastery()` function for reading from DB
+  - Fixed `overallMastery` calculation to multiply by 100 for percentage display
+  - Fixed recommendation thresholds from `< 40`/`>= 80` to `< 0.4`/`>= 0.8`
+- Fixed in `/src/app/api/admin/route.ts`:
+  - Added `normalizeMastery()` function
+  - Fixed `avgMastery` and `avgTableMastery` calculations to multiply by 100 for percentage display
+- Fixed in `/src/components/parent/ParentDashboard.tsx`:
+  - Fixed thresholds from `< 40`/`>= 80` to `< 0.4`/`>= 0.8`
+  - Fixed Progress `value={mastery}` to `value={mastery * 100}`
+  - Fixed percentage display from `Math.round(mastery)` to `Math.round(mastery * 100)`
+- Fixed in `/src/components/admin/AdminDashboard.tsx`:
+  - Fixed `getMasteryColor()` and `getMasteryBg()` thresholds from 80/40 to 0.8/0.4
+  - Fixed Progress `value={mastery}` to `value={mastery * 100}`
+  - Fixed percentage display and color thresholds
+
+**BUG FIX 2: GameResults Math.random() in render**
+- Problem: `confettiPieces` array used `Math.random()` during render, causing different values on each re-render
+- Fixed in `/src/components/games/GameResults.tsx`:
+  - Wrapped `confettiPieces` with `useMemo` using deterministic values based on index
+  - Changed `ConfettiPiece` to receive all random values as props (rotationDir, xDrift, duration, repeatDelay) instead of calling Math.random() internally
+  - Fixed `AnimatedCounter` component to use `useRef` instead of mutable `useMemo` object (lint error fix)
+
+### Styling Enhancements:
+
+**MultipleChoiceGame.tsx:**
+- Added gradient background transitions based on answer feedback (correct=green glow, wrong=red pulse)
+- Added particle burst effect on correct answers (12 colored particles radiating from click position)
+- Added screen shake effect on wrong answers
+- Made option buttons more visually appealing with gradient backgrounds and hover effects
+- Added progress ring at the top showing question progress
+- Added animated emoji reactions that scale up and fade
+- Added green/red flash overlay on correct/wrong answers
+- Added shimmer effect on timer bar
+- Added animated progress dots with pulsing current dot
+
+**TrueFalseGame.tsx:**
+- Added dramatic reveal animation for the answer (shows correct/incorrect after delay)
+- Added green/red flash overlay on correct/wrong
+- Added larger, more visually distinct True/False buttons with gradient backgrounds and icon circles
+- Added animated timer with color transitions and shimmer
+- Added score counter with flip animation
+- Added background color transitions on feedback
+- Added Check/X icons in circular backgrounds on buttons
+
+**MatchingGame.tsx:**
+- Added sparkle effect when a pair is matched (6-pointed star burst)
+- Enhanced SVG connection lines with glow filter and dual-layer rendering
+- Added celebration animation when all pairs matched (flying particles and emoji)
+- More vibrant card colors with gradients (from-pink-400 to-rose-500 etc.)
+- Added pulse animation on selected card
+- Added progress bar for match completion
+- Added gradient backgrounds with shine overlay
+- Added timer with animated gradient
+
+**FillBlankGame.tsx:**
+- Added animated number pad with press effects (ripple animation on key press)
+- Added input field with glow effect when typing
+- Added success confetti burst on correct answers
+- Added wrong answer shake with red glow overlay
+- Added timer with animated gradient and shimmer
+- Added background color transitions on feedback
+- Added enhanced submit button with glow effect
+- Added visual feedback on pressed numpad keys
+
+**GameResults.tsx:**
+- Added dramatic star rating animation (stars appear one by one with glow effect)
+- Added confetti rain for perfect scores (full 50-piece confetti)
+- Added sparkle overlay for high scores
+- Added animated score counter with easing
+- Added achievement unlock animations (spring entrance + rotating icons)
+- Added "Play Again" button with glow effect
+- Added trophy bounce animation
+- Added gradient title text
+- Added accuracy bar with color coding and shimmer
+- Added animated reward icons
+
+### Verification:
+- ✅ ESLint passes with 0 errors
+- ✅ Dev server compiles and runs correctly
+
+---
+
+## Practice Mode & Speed Test Features (2026-03-06)
+
+### Task ID: round2-features
+### Agent: Feature Agent
+
+### Summary: Added Practice Mode and Speed Test as two major new gamified features
+
+### Files Created:
+1. `/src/components/practice/PracticeMode.tsx` — Relaxed practice mode with table overview, interactive grid, flip cards, and tips
+2. `/src/components/speedtest/SpeedTestPage.tsx` — 60-second speed challenge with streaks, combos, rank system, and animated results
+
+### Files Modified:
+1. `/src/types/index.ts` — Added 'practice' and 'speed-test' to AppView type
+2. `/src/app/page.tsx` — Added imports for PracticeMode and SpeedTestPage, navigation cases, auth guard entries, and result handling
+3. `/src/components/dashboard/ChildDashboard.tsx` — Added onPractice/onSpeedTest props and "تدريب حرّ" / "اختبار السرعة" quick action buttons
+
+### Practice Mode Features:
+- **Table overview** showing all 9 multiplication tables as visual cards with mastery progress bars
+- **Overall progress bar** showing aggregate mastery across all tables
+- **Tap a table** to enter detailed view with 3 tabs: Grid, Cards, Tips
+- **Interactive multiplication grid** (3×3) with color-coded cells, tap any cell to hear it read aloud via Web Speech API (Arabic)
+- **Flip cards** with 3D CSS flip animation — tap to reveal answer, audio read button on back
+- **Tips section** with memory tricks for each table (e.g., "جدول 5: دائماً ينتهي بـ 0 أو 5")
+- **Pattern highlights** per table with fun math patterns and mnemonics
+- **Mastery indicator** on each table card showing progress bar and label (متقن/يتعلم/جديد)
+- **Start game button** to begin a game from the selected table
+- **Mixed practice button** for practicing all tables at once
+- **Audio read** buttons using Web Speech API (Arabic language, ar-SA)
+- Arabic UI text, RTL layout, mobile responsive, Framer Motion animations
+
+### Speed Test Features:
+- **Intro screen** with dramatic dark gaming theme, floating symbols, rules explanation, and rank preview
+- **60-second countdown timer** with circular SVG progress indicator that changes color (green → amber → red) as time runs out
+- **Rapid-fire questions** with 4 answer options appearing one after another
+- **Combo system** — consecutive correct answers increase score multiplier (1x to 3x)
+- **Streak counter** with animated fire emoji that grows with streak count
+- **Speed meter** showing average answer time with visual bar
+- **Real-time stats** — correct/wrong counters, combo multiplier badge
+- **Encouragement messages** — random Arabic phrases for correct/wrong/combo milestones
+- **End screen** with detailed stats: score, correct count, wrong count, accuracy, average speed, questions per minute, best streak
+- **Rank system**: Bronze (<10 QPM), Silver (10-20), Gold (20-30), Diamond (30+)
+- **Animated rank badge** with glow effect and confetti particles on results screen
+- **Play again** and **back** buttons on results
+- Arabic UI text, RTL layout, mobile responsive, Framer Motion animations
+
+### Verification:
+- ✅ ESLint passes with 0 errors
+- ✅ Dev server compiles and runs correctly
 
 ---
 

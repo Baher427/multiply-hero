@@ -176,14 +176,14 @@ export default function ParentDashboard({ childId, onBack }: ParentDashboardProp
   const weakTables = useMemo(() => {
     if (!data?.child.tableProgress) return [];
     return [...data.child.tableProgress]
-      .filter(p => p.masteryLevel < 40)
+      .filter(p => p.masteryLevel < 0.4)
       .sort((a, b) => a.masteryLevel - b.masteryLevel);
   }, [data?.child.tableProgress]);
 
   const strongTables = useMemo(() => {
     if (!data?.child.tableProgress) return [];
     return [...data.child.tableProgress]
-      .filter(p => p.masteryLevel >= 80)
+      .filter(p => p.masteryLevel >= 0.8)
       .sort((a, b) => b.masteryLevel - a.masteryLevel);
   }, [data?.child.tableProgress]);
 
@@ -361,12 +361,12 @@ export default function ParentDashboard({ childId, onBack }: ParentDashboardProp
                   let labelBg = 'bg-slate-100 text-slate-600';
                   let label = 'لم يبدأ';
 
-                  if (mastery >= 80) {
+                  if (mastery >= 0.8) {
                     borderColor = 'border-green-300';
                     bgColor = 'bg-green-50';
                     labelBg = 'bg-green-100 text-green-700';
                     label = 'متقن ✅';
-                  } else if (mastery >= 40) {
+                  } else if (mastery >= 0.4) {
                     borderColor = 'border-amber-300';
                     bgColor = 'bg-amber-50';
                     labelBg = 'bg-amber-100 text-amber-700';
@@ -411,13 +411,13 @@ export default function ParentDashboard({ childId, onBack }: ParentDashboardProp
                       <div className="text-2xl">{TABLE_EMOJIS[tableNum - 1]}</div>
                       <div className="text-3xl sm:text-4xl font-black text-slate-800">×{tableNum}</div>
                       <Progress
-                        value={mastery}
+                        value={mastery * 100}
                         className="h-2.5 w-full bg-slate-200 [&>div]:transition-all [&>div]:duration-700"
                       />
                       <span className={`text-[11px] sm:text-xs font-bold px-2 py-0.5 rounded-full ${labelBg}`}>
                         {label}
                       </span>
-                      <span className="text-sm font-bold text-slate-600">{Math.round(mastery)}%</span>
+                      <span className="text-sm font-bold text-slate-600">{Math.round(mastery * 100)}%</span>
                     </motion.div>
                   );
                 })}

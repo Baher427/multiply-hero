@@ -55,6 +55,8 @@ interface ChildDashboardProps {
   onSettings: () => void;
   onLeaderboard: () => void;
   onShop: () => void;
+  onPractice: () => void;
+  onSpeedTest: () => void;
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -975,7 +977,7 @@ function TableDetailDialog({
 export default function ChildDashboard({
   child, tableProgress, earnedBadges = [], onStartGame, onDailyChallenge,
   onAchievements, onWorldMap, onStoryMode, onProfile, onBack, onSettings,
-  onLeaderboard, onShop,
+  onLeaderboard, onShop, onPractice, onSpeedTest,
 }: ChildDashboardProps) {
   const levelBadge = LEVEL_BADGES[Math.min(child.level, 10)] || '🏆';
   const { play } = useSound();
@@ -1283,8 +1285,10 @@ export default function ChildDashboard({
             <QuickActionButton emoji="🏆" label="الإنجازات" gradient="from-yellow-400 to-amber-500" onClick={onAchievements} delay={0.25} />
             <QuickActionButton emoji="🗺️" label="خريطة العالم" gradient="from-teal-400 to-emerald-500" onClick={onWorldMap} delay={0.3} />
             <QuickActionButton emoji="📖" label="وضع القصة" gradient="from-purple-400 to-fuchsia-500" onClick={onStoryMode} delay={0.35} />
-            <QuickActionButton emoji="🏆" label="المتصدرين" gradient="from-yellow-400 to-amber-500" onClick={onLeaderboard} delay={0.4} />
-            <QuickActionButton emoji="🛍️" label="المتجر" gradient="from-emerald-400 to-teal-500" onClick={onShop} delay={0.45} />
+            <QuickActionButton emoji="📚" label="تدريب حرّ" gradient="from-cyan-400 to-teal-500" onClick={onPractice} delay={0.4} />
+            <QuickActionButton emoji="⚡" label="اختبار السرعة" gradient="from-purple-400 to-fuchsia-500" onClick={onSpeedTest} delay={0.45} />
+            <QuickActionButton emoji="🏆" label="المتصدرين" gradient="from-yellow-400 to-amber-500" onClick={onLeaderboard} delay={0.5} />
+            <QuickActionButton emoji="🛍️" label="المتجر" gradient="from-emerald-400 to-teal-500" onClick={onShop} delay={0.55} />
           </div>
         </div>
 
