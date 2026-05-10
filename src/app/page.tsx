@@ -27,6 +27,7 @@ import DailyChallenge from '@/components/challenges/DailyChallenge';
 import StoryMode from '@/components/story/StoryMode';
 import AdminDashboard from '@/components/admin/AdminDashboard';
 import ParentDashboard from '@/components/parent/ParentDashboard';
+import SettingsPage from '@/components/settings/SettingsPage';
 import AICoach from '@/components/shared/AICoach';
 import SoundToggle from '@/components/shared/SoundToggle';
 
@@ -49,6 +50,7 @@ const AUTH_REQUIRED_VIEWS: AppView[] = [
   'achievements',
   'daily-challenge',
   'story-mode',
+  'settings',
 ];
 
 export default function Home() {
@@ -66,6 +68,10 @@ export default function Home() {
     setParentMode,
     authenticate,
     logout,
+    soundEnabled,
+    musicEnabled,
+    toggleSound,
+    toggleMusic,
   } = useAppStore();
 
   const { startGame, resetGame } = useGameStore();
@@ -81,6 +87,24 @@ export default function Home() {
     show: false,
     type: 'encouragement',
   });
+
+  // Handler for updating child profile from settings
+  const handleUpdateProfile = async (updates: Partial<{ displayName: string; avatarId: string; favoriteColor: string }>) => {
+    if (!selectedChild) return;
+    try {
+      const res = await fetch(`/api/children/${selectedChild.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSelectedChild(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+    }
+  };
 
   // Fetch children list
   const fetchChildren = useCallback(async () => {
@@ -302,10 +326,28 @@ export default function Home() {
 
   // Handle game completion
   const handleGameComplete = (result: any) => {
-    setGameResult(result);
-    saveGameSession(result);
+    // Calculate rewards based on game results
+    const accuracy = result.correctCount + result.wrongCount > 0
+      ? result.correctCount / (result.correctCount + result.wrongCount)
+      : 0;
+
+    const pointsEarned = result.score || 0;
+    const starsEarned = accuracy >= 0.9 ? 3 : accuracy >= 0.7 ? 2 : accuracy >= 0.4 ? 1 : 0;
+    const coinsEarned = Math.round(result.correctCount * 5 + (result.bestCombo || 0) * 2);
+    const gemsEarned = accuracy === 1 ? 3 : accuracy >= 0.8 ? 1 : 0;
+
+    const enrichedResult = {
+      ...result,
+      pointsEarned,
+      starsEarned,
+      coinsEarned,
+      gemsEarned,
+    };
+
+    setGameResult(enrichedResult);
+    saveGameSession(enrichedResult);
     navigate('game-results');
-    if (result.starsEarned === 3) {
+    if (starsEarned === 3) {
       showCoach('celebration');
     }
   };
@@ -414,12 +456,14 @@ export default function Home() {
           <ChildDashboard
             child={selectedChild}
             tableProgress={tableProgress}
+            earnedBadges={earnedBadges}
             onStartGame={() => navigate('game-select')}
             onDailyChallenge={() => navigate('daily-challenge')}
             onAchievements={() => navigate('achievements')}
             onWorldMap={() => navigate('world-map')}
             onStoryMode={() => navigate('story-mode')}
             onProfile={() => navigate('profile-setup')}
+            onSettings={() => navigate('settings')}
             onBack={() => {
               handleLogout();
             }}
@@ -509,8 +553,8 @@ export default function Home() {
           <DailyChallenge
             streak={selectedChild?.streak || 0}
             lastActiveDate={selectedChild?.lastActiveDate || null}
-            onStartChallenge={(tables) => {
-              handleStartGame('multiple-choice', 'mixed', 'medium');
+            onStartChallenge={(tables, difficulty) => {
+              handleStartGame('multiple-choice', 'mixed', difficulty);
             }}
             onBack={() => navigate('dashboard')}
           />
@@ -525,6 +569,19 @@ export default function Home() {
               handleStartGame('multiple-choice', tableNumber, 'easy');
             }}
             onBack={() => navigate('dashboard')}
+          />
+        ) : null;
+
+      case 'settings':
+        return selectedChild && isAuthenticated ? (
+          <SettingsPage
+            child={selectedChild}
+            onBack={() => navigate('dashboard')}
+            onUpdateProfile={handleUpdateProfile}
+            soundEnabled={soundEnabled}
+            musicEnabled={musicEnabled}
+            toggleSound={toggleSound}
+            toggleMusic={toggleMusic}
           />
         ) : null;
 

@@ -135,3 +135,16 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ chil
     return NextResponse.json({ success: false, error: 'Failed to update child' }, { status: 500 });
   }
 }
+
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ childId: string }> }) {
+  try {
+    const { childId } = await params;
+
+    await db.child.delete({ where: { id: childId } });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Delete child error:', error);
+    return NextResponse.json({ success: false, error: 'Failed to delete child' }, { status: 500 });
+  }
+}

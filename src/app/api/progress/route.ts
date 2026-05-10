@@ -69,3 +69,52 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ success: false, error: 'Failed to update progress' }, { status: 500 });
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const childId = searchParams.get('childId');
+
+    if (!childId) {
+      return NextResponse.json({ success: false, error: 'childId is required' }, { status: 400 });
+    }
+
+    // Reset all progress for the child (set mastery to 0, clear counts)
+    const progress = await db.tableProgress.findMany({ where: { childId } });
+
+    for (const p of progress) {
+      await db.tableProgress.update({
+        where: { id: p.id },
+        data: {
+          correctAnswers: 0,
+          wrongAnswers: 0,
+          totalAttempts: 0,
+          masteryLevel: 0,
+          avgSpeed: 0,
+          lastPracticed: new Date(),
+        },
+      });
+    }
+
+    // Also reset child points, level, stars, coins, gems, streak
+    await db.child.update({
+      where: { id: childId },
+      data: {
+        points: 0,
+        level: 1,
+        stars: 0,
+        coins: 0,
+        gems: 0,
+        streak: 0,
+        bestCombo: 0,
+        comboCount: 0,
+        totalPlayTime: 0,
+      },
+    });
+
+    return NextResponse.json({ success: true, data: { resetCount: progress.length } });
+  } catch (error) {
+    console.error('Reset progress error:', error);
+    return NextResponse.json({ success: false, error: 'Failed to reset progress' }, { status: 500 });
+  }
+}

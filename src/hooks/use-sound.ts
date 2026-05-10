@@ -1,8 +1,25 @@
 import { useCallback } from 'react';
 import { soundEngine } from '@/lib/sounds';
 
+export type SoundType =
+  | 'correct'
+  | 'wrong'
+  | 'combo'
+  | 'levelUp'
+  | 'badge'
+  | 'click'
+  | 'star'
+  | 'coins'
+  | 'gameOver'
+  | 'countdown'
+  | 'match'
+  | 'heartbeat'
+  | 'whoosh'
+  | 'pop'
+  | 'drumroll';
+
 export function useSound() {
-  const play = useCallback((sound: 'correct' | 'wrong' | 'combo' | 'levelUp' | 'badge' | 'click' | 'star' | 'coins' | 'gameOver' | 'countdown' | 'match') => {
+  const play = useCallback((sound: SoundType) => {
     if (!soundEngine) return;
     switch (sound) {
       case 'correct': soundEngine.playCorrect(); break;
@@ -16,6 +33,10 @@ export function useSound() {
       case 'gameOver': soundEngine.playGameOver(); break;
       case 'countdown': soundEngine.playCountdown(); break;
       case 'match': soundEngine.playMatch(); break;
+      case 'heartbeat': soundEngine.playHeartbeat(); break;
+      case 'whoosh': soundEngine.playWhoosh(); break;
+      case 'pop': soundEngine.playPop(); break;
+      case 'drumroll': soundEngine.playDrumroll(); break;
     }
   }, []);
 

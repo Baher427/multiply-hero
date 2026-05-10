@@ -48,3 +48,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: 'Failed to create badge' }, { status: 500 });
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const childId = searchParams.get('childId');
+
+    if (!childId) {
+      return NextResponse.json({ success: false, error: 'childId is required' }, { status: 400 });
+    }
+
+    const result = await db.badge.deleteMany({ where: { childId } });
+
+    return NextResponse.json({ success: true, data: { deletedCount: result.count } });
+  } catch (error) {
+    console.error('Delete badges error:', error);
+    return NextResponse.json({ success: false, error: 'Failed to delete badges' }, { status: 500 });
+  }
+}

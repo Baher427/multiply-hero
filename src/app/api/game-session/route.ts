@@ -4,11 +4,35 @@ import { db } from '@/lib/db';
 // Level thresholds: level = points / threshold
 const LEVEL_THRESHOLDS = [0, 50, 150, 300, 500, 800, 1200, 1800, 2500, 3500, 5000, 7000, 10000];
 
+export { LEVEL_THRESHOLDS };
+
 function calculateLevel(points: number): number {
   for (let i = LEVEL_THRESHOLDS.length - 1; i >= 0; i--) {
     if (points >= LEVEL_THRESHOLDS[i]) return i + 1;
   }
   return 1;
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const childId = searchParams.get('childId');
+    const limit = parseInt(searchParams.get('limit') || '5');
+
+    if (!childId) {
+      return NextResponse.json({ success: false, error: 'childId is required' }, { status: 400 });
+    }
+
+    const sessions = await db.gameSession.findMany({
+      where: { childId },
+      orderBy: { completedAt: 'desc' },
+      take: limit,
+    });
+
+    return NextResponse.json({ success: true, data: sessions });
+  } catch (error) {
+    return NextResponse.json({ success: false, error: 'Failed to fetch game sessions' }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {
