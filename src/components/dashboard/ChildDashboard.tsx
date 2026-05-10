@@ -6,6 +6,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import AvatarImage, { getAvatarEmoji } from '@/components/shared/AvatarImage';
+import { useSound } from '@/hooks/use-sound';
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 
@@ -219,7 +221,8 @@ function CircularProgress({
 
 // ─── Stat Item Component ─────────────────────────────────────────────────────
 
-function StatItem({ emoji, value, label, color }: { emoji: string; value: number; label: string; color: string }) {
+function StatItem({ emoji, value, label, color }: { emoji: string; value: number | undefined; label: string; color: string }) {
+  const safeValue = value ?? 0;
   return (
     <motion.div
       initial={{ scale: 0.8, opacity: 0 }}
@@ -228,7 +231,7 @@ function StatItem({ emoji, value, label, color }: { emoji: string; value: number
       className="flex flex-col items-center gap-1"
     >
       <div className={`text-2xl md:text-3xl`}>{emoji}</div>
-      <div className={`text-lg md:text-xl font-extrabold ${color}`}>{value.toLocaleString('ar-EG')}</div>
+      <div className={`text-lg md:text-xl font-extrabold ${color}`}>{safeValue.toLocaleString('ar-EG')}</div>
       <div className="text-xs text-white/70 font-medium">{label}</div>
     </motion.div>
   );
@@ -311,8 +314,9 @@ export default function ChildDashboard({
   onBack,
 }: ChildDashboardProps) {
   // Derived data
-  const avatarEmoji = AVATAR_MAP[child.avatarId] || '🧒';
+  const avatarEmoji = getAvatarEmoji(child.avatarId);
   const levelBadge = LEVEL_BADGES[Math.min(child.level, 10)] || '🏆';
+  const { play } = useSound();
 
   const motivationalTip = useMemo(() => {
     const idx = Math.floor(Date.now() / 86400000) % MOTIVATIONAL_TIPS.length;
@@ -403,10 +407,10 @@ export default function ChildDashboard({
                   onClick={onProfile}
                   whileHover={{ scale: 1.15, rotate: 10 }}
                   whileTap={{ scale: 0.95 }}
-                  className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/30 backdrop-blur-sm flex items-center justify-center text-4xl md:text-5xl shadow-lg border-3 border-white/50 cursor-pointer"
+                  className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/30 backdrop-blur-sm flex items-center justify-center shadow-lg border-3 border-white/50 cursor-pointer overflow-hidden"
                   aria-label="الملف الشخصي"
                 >
-                  {avatarEmoji}
+                  <AvatarImage avatarId={child.avatarId} size={64} />
                 </motion.button>
 
                 <div className="flex-1">
@@ -549,7 +553,7 @@ export default function ChildDashboard({
               className="col-span-2"
             >
               <Button
-                onClick={onStartGame}
+                onClick={() => { play('click'); onStartGame(); }}
                 className="w-full h-20 md:h-24 text-xl md:text-2xl font-black rounded-2xl shadow-xl bg-gradient-to-l from-emerald-400 to-green-500 hover:from-emerald-500 hover:to-green-600 text-white border-0 transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98]"
               >
                 <motion.span

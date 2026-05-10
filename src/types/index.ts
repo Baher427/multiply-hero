@@ -1,6 +1,7 @@
 // ===== App Views =====
 export type AppView =
   | 'landing'
+  | 'login'
   | 'profile-setup'
   | 'child-select'
   | 'dashboard'

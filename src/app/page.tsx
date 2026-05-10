@@ -11,6 +11,7 @@ import type { AppView, ChildProfile, TableProgressData, GameConfig, Question } f
 
 // Components
 import LandingPage from '@/components/landing/LandingPage';
+import LoginPage from '@/components/profile/LoginPage';
 import ProfileSetup from '@/components/profile/ProfileSetup';
 import ChildSelector from '@/components/profile/ChildSelector';
 import ChildDashboard from '@/components/dashboard/ChildDashboard';
@@ -38,18 +39,33 @@ const AVATAR_MAP: Record<string, string> = {
   rocket: '🚀', crown: '👑', gem: '💎', trophy: '🏆', rainbow: '🌈', balloon: '🎈',
 };
 
+// Views that require authentication
+const AUTH_REQUIRED_VIEWS: AppView[] = [
+  'dashboard',
+  'game-select',
+  'game-play',
+  'game-results',
+  'world-map',
+  'achievements',
+  'daily-challenge',
+  'story-mode',
+];
+
 export default function Home() {
   const {
     currentView,
     selectedChild,
     selectedTable,
     selectedGameType,
+    isAuthenticated,
     navigate,
     setSelectedChild,
     setSelectedTable,
     setSelectedGameType,
     setAdminMode,
     setParentMode,
+    authenticate,
+    logout,
   } = useAppStore();
 
   const { startGame, resetGame } = useGameStore();
@@ -119,6 +135,7 @@ export default function Home() {
       if (data.success) {
         const child = data.data;
         setSelectedChild(child);
+        authenticate(child.id);
         await fetchChildData(child.id);
         navigate('dashboard');
         showCoach('celebration');
@@ -130,7 +147,7 @@ export default function Home() {
     }
   };
 
-  // Select existing child
+  // Select existing child (from LoginPage)
   const handleSelectChild = async (childId: string) => {
     setIsLoading(true);
     try {
@@ -138,6 +155,7 @@ export default function Home() {
       const data = await res.json();
       if (data.success) {
         setSelectedChild(data.data);
+        authenticate(childId);
         await fetchChildData(childId);
         navigate('dashboard');
       }
@@ -146,6 +164,16 @@ export default function Home() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Handle logout
+  const handleLogout = () => {
+    logout();
+    setTableProgress([]);
+    setEarnedBadges([]);
+    setGameQuestions([]);
+    setGameResult(null);
+    setGameConfig(null);
   };
 
   // Save game session
@@ -309,6 +337,13 @@ export default function Home() {
     }
   }, [currentView, selectedChild, fetchChildData]);
 
+  // Authentication guard: redirect to landing if not authenticated for protected views
+  useEffect(() => {
+    if (AUTH_REQUIRED_VIEWS.includes(currentView) && !isAuthenticated) {
+      navigate('landing');
+    }
+  }, [currentView, isAuthenticated, navigate]);
+
   // Get recommended table
   const recommendedTable = tableProgress.length > 0 ? getRecommendedTable(tableProgress) : 1;
 
@@ -319,11 +354,8 @@ export default function Home() {
         return (
           <LandingPage
             onStart={() => {
-              if (children.length > 0) {
-                navigate('child-select');
-              } else {
-                navigate('profile-setup');
-              }
+              // Always go to login page first
+              navigate('login');
             }}
             onAdmin={() => {
               setAdminMode(true);
@@ -336,13 +368,30 @@ export default function Home() {
           />
         );
 
+      case 'login':
+        return (
+          <LoginPage
+            childList={children.map(c => ({
+              id: c.id,
+              name: c.name,
+              displayName: c.displayName,
+              avatarId: c.avatarId,
+              level: c.level,
+              points: c.points,
+            }))}
+            onSelectChild={handleSelectChild}
+            onNewChild={() => navigate('profile-setup')}
+            onBack={() => navigate('landing')}
+          />
+        );
+
       case 'child-select':
         return (
           <ChildSelector
             childProfiles={children}
             onSelect={handleSelectChild}
             onNewChild={() => navigate('profile-setup')}
-            onBack={() => navigate('landing')}
+            onBack={() => navigate('login')}
           />
         );
 
@@ -350,12 +399,18 @@ export default function Home() {
         return (
           <ProfileSetup
             onComplete={handleCreateChild}
-            onBack={() => navigate('child-select')}
+            onBack={() => {
+              if (children.length > 0) {
+                navigate('login');
+              } else {
+                navigate('landing');
+              }
+            }}
           />
         );
 
       case 'dashboard':
-        return selectedChild ? (
+        return selectedChild && isAuthenticated ? (
           <ChildDashboard
             child={selectedChild}
             tableProgress={tableProgress}
@@ -366,23 +421,22 @@ export default function Home() {
             onStoryMode={() => navigate('story-mode')}
             onProfile={() => navigate('profile-setup')}
             onBack={() => {
-              setSelectedChild(null);
-              navigate('landing');
+              handleLogout();
             }}
           />
         ) : null;
 
       case 'game-select':
-        return (
+        return isAuthenticated ? (
           <GameSelector
             onSelectGame={handleStartGame}
             onBack={() => navigate('dashboard')}
             recommendedTable={recommendedTable}
           />
-        );
+        ) : null;
 
       case 'game-play':
-        if (gameQuestions.length === 0) return null;
+        if (gameQuestions.length === 0 || !isAuthenticated) return null;
         
         switch (selectedGameType) {
           case 'multiple-choice':
@@ -422,7 +476,7 @@ export default function Home() {
         }
 
       case 'game-results':
-        return gameResult ? (
+        return gameResult && isAuthenticated ? (
           <GameResults
             result={gameResult}
             onPlayAgain={handlePlayAgain}
@@ -431,7 +485,7 @@ export default function Home() {
         ) : null;
 
       case 'world-map':
-        return (
+        return isAuthenticated ? (
           <ProgressMap
             tableProgress={tableProgress}
             onSelectTable={(tableNumber) => {
@@ -440,18 +494,18 @@ export default function Home() {
             }}
             onBack={() => navigate('dashboard')}
           />
-        );
+        ) : null;
 
       case 'achievements':
-        return (
+        return isAuthenticated ? (
           <AchievementsPage
             earnedBadges={earnedBadges}
             onBack={() => navigate('dashboard')}
           />
-        );
+        ) : null;
 
       case 'daily-challenge':
-        return (
+        return isAuthenticated ? (
           <DailyChallenge
             streak={selectedChild?.streak || 0}
             lastActiveDate={selectedChild?.lastActiveDate || null}
@@ -460,10 +514,10 @@ export default function Home() {
             }}
             onBack={() => navigate('dashboard')}
           />
-        );
+        ) : null;
 
       case 'story-mode':
-        return (
+        return isAuthenticated ? (
           <StoryMode
             tableProgress={tableProgress}
             onSelectChapter={(tableNumber) => {
@@ -472,7 +526,7 @@ export default function Home() {
             }}
             onBack={() => navigate('dashboard')}
           />
-        );
+        ) : null;
 
       case 'admin':
         return (

@@ -2,7 +2,8 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { useEffect, useState } from 'react';
+import Image from 'next/image';
+import { useEffect, useState, useRef, useCallback } from 'react';
 
 interface LandingPageProps {
   onStart: () => void;
@@ -60,9 +61,68 @@ const FEATURES = [
 export default function LandingPage({ onStart, onAdmin, onParent }: LandingPageProps) {
   const [mascotBounce, setMascotBounce] = useState(false);
 
+  // Secret admin access state
+  const [titleClickCount, setTitleClickCount] = useState(0);
+  const [showLockIcon, setShowLockIcon] = useState(false);
+  const titleClickTimer = useRef<NodeJS.Timeout | null>(null);
+  const lastTitleClickTime = useRef<number>(0);
+
+  // Long press on mascot for admin
+  const [longPressActive, setLongPressActive] = useState(false);
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+
+  // Secret: Click title 5 times within 3 seconds
+  const handleTitleClick = useCallback(() => {
+    const now = Date.now();
+    const timeSinceLastClick = now - lastTitleClickTime.current;
+    lastTitleClickTime.current = now;
+
+    // Reset if too much time has passed
+    if (timeSinceLastClick > 3000) {
+      setTitleClickCount(1);
+    } else {
+      setTitleClickCount(prev => prev + 1);
+    }
+
+    // Show lock icon after 3 clicks (subtle hint)
+    if (titleClickCount >= 2) {
+      setShowLockIcon(true);
+      setTimeout(() => setShowLockIcon(false), 1500);
+    }
+
+    // 5 clicks within 3 seconds = admin access
+    if (titleClickCount >= 4) {
+      setTitleClickCount(0);
+      setShowLockIcon(false);
+      onAdmin();
+    }
+
+    // Reset counter after 3 seconds of no clicks
+    if (titleClickTimer.current) clearTimeout(titleClickTimer.current);
+    titleClickTimer.current = setTimeout(() => {
+      setTitleClickCount(0);
+    }, 3000);
+  }, [titleClickCount, onAdmin]);
+
+  // Secret: Long press mascot for 3 seconds = admin access
+  const handleMascotPressStart = useCallback(() => {
+    setLongPressActive(true);
+    longPressTimer.current = setTimeout(() => {
+      onAdmin();
+      setLongPressActive(false);
+    }, 3000);
+  }, [onAdmin]);
+
+  const handleMascotPressEnd = useCallback(() => {
+    setLongPressActive(false);
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }, []);
+
   // Generate floating elements with stable random values
   const floatingElements: FloatingElement[] = (() => {
-    // Use a seeded approach for consistent rendering
     const elements: FloatingElement[] = [];
     let seed = 42;
     const seededRandom = () => {
@@ -90,6 +150,14 @@ export default function LandingPage({ onStart, onAdmin, onParent }: LandingPageP
       setTimeout(() => setMascotBounce(false), 600);
     }, 3000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Cleanup timers
+  useEffect(() => {
+    return () => {
+      if (titleClickTimer.current) clearTimeout(titleClickTimer.current);
+      if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    };
   }, []);
 
   const containerVariants = {
@@ -216,9 +284,9 @@ export default function LandingPage({ onStart, onAdmin, onParent }: LandingPageP
       >
         {/* Hero Section */}
         <motion.div variants={itemVariants} className="mb-6 text-center md:mb-10">
-          {/* Title */}
+          {/* Title - clickable for secret admin access */}
           <motion.h1
-            className="mb-3 text-4xl font-extrabold leading-tight tracking-tight text-white drop-shadow-lg sm:text-5xl md:text-6xl lg:text-7xl"
+            className="mb-3 text-4xl font-extrabold leading-tight tracking-tight text-white drop-shadow-lg sm:text-5xl md:text-6xl lg:text-7xl cursor-default select-none"
             style={{
               textShadow:
                 '0 4px 20px rgba(0,0,0,0.3), 0 0 40px rgba(52,211,153,0.3)',
@@ -228,8 +296,22 @@ export default function LandingPage({ onStart, onAdmin, onParent }: LandingPageP
               className="inline-block"
               animate={{ rotate: [0, -2, 2, 0] }}
               transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+              onClick={handleTitleClick}
             >
               MultiplyHero
+              {/* Subtle lock icon after 3 clicks */}
+              <AnimatePresence>
+                {showLockIcon && (
+                  <motion.span
+                    initial={{ opacity: 0, scale: 0 }}
+                    animate={{ opacity: 0.4, scale: 0.8 }}
+                    exit={{ opacity: 0, scale: 0 }}
+                    className="inline-block mr-2 text-lg align-top"
+                  >
+                    🔐
+                  </motion.span>
+                )}
+              </AnimatePresence>
             </motion.span>
             <br />
             <motion.span
@@ -268,7 +350,7 @@ export default function LandingPage({ onStart, onAdmin, onParent }: LandingPageP
           </motion.div>
         </motion.div>
 
-        {/* Mascot Area */}
+        {/* Mascot Area - long press for secret admin access */}
         <motion.div
           variants={itemVariants}
           className="relative mb-8 md:mb-12"
@@ -283,9 +365,9 @@ export default function LandingPage({ onStart, onAdmin, onParent }: LandingPageP
             animate={{ scale: [1, 1.15, 1], opacity: [0.6, 1, 0.6] }}
             transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
           />
-          {/* Mascot emoji */}
+          {/* Mascot - 3D image with long press handler for secret admin access */}
           <motion.div
-            className="relative text-8xl sm:text-9xl md:text-[10rem]"
+            className="relative cursor-default select-none"
             animate={
               mascotBounce
                 ? {
@@ -293,17 +375,51 @@ export default function LandingPage({ onStart, onAdmin, onParent }: LandingPageP
                     rotate: [0, -8, 8, 0],
                     scale: [1, 1.15, 1],
                   }
-                : { y: [0, -8, 0] }
+                : longPressActive
+                  ? {
+                      scale: [1, 1.1, 1],
+                      rotate: [0, -3, 3, 0],
+                    }
+                  : { y: [0, -8, 0] }
             }
             transition={
               mascotBounce
                 ? { duration: 0.6, ease: 'easeOut' }
                 : { duration: 2.5, repeat: Infinity, ease: 'easeInOut' }
             }
-            style={{ filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.3))' }}
+            style={{
+              filter: longPressActive
+                ? 'drop-shadow(0 8px 24px rgba(251,191,36,0.6))'
+                : 'drop-shadow(0 8px 24px rgba(0,0,0,0.3))',
+            }}
+            onMouseDown={handleMascotPressStart}
+            onMouseUp={handleMascotPressEnd}
+            onMouseLeave={handleMascotPressEnd}
+            onTouchStart={handleMascotPressStart}
+            onTouchEnd={handleMascotPressEnd}
           >
-            🦁
+            <Image
+              src="/images/mascot/hero.png"
+              alt="بطل الضرب"
+              width={200}
+              height={200}
+              className="w-32 h-32 sm:w-40 sm:h-40 md:w-52 md:h-52 object-contain"
+              priority
+            />
           </motion.div>
+          {/* Long press indicator */}
+          <AnimatePresence>
+            {longPressActive && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-amber-300 text-sm font-medium"
+              >
+                استمر بالضغط... ✨
+              </motion.div>
+            )}
+          </AnimatePresence>
           {/* Mascot speech bubble */}
           <motion.div
             className="absolute -top-2 -left-4 rounded-2xl bg-white/95 px-3 py-1.5 text-sm font-bold text-emerald-700 shadow-lg sm:-top-4 sm:-left-8 sm:px-4 sm:py-2 sm:text-base"
@@ -477,7 +593,7 @@ export default function LandingPage({ onStart, onAdmin, onParent }: LandingPageP
           ))}
         </motion.div>
 
-        {/* Bottom buttons: Admin & Parent */}
+        {/* Bottom buttons: Parent only (Admin is hidden) */}
         <motion.div
           variants={itemVariants}
           className="mt-auto flex flex-col items-center gap-3 pt-8 sm:flex-row sm:gap-4"
@@ -488,13 +604,6 @@ export default function LandingPage({ onStart, onAdmin, onParent }: LandingPageP
             className="h-9 rounded-full border border-white/15 bg-white/5 px-5 text-xs font-medium text-white/60 backdrop-blur-sm transition-all hover:bg-white/15 hover:text-white/80 sm:text-sm"
           >
             👨‍👩‍👧 أولياء الأمور
-          </Button>
-          <Button
-            onClick={onAdmin}
-            variant="ghost"
-            className="h-9 rounded-full border border-white/10 bg-white/5 px-5 text-xs font-medium text-white/40 backdrop-blur-sm transition-all hover:bg-white/10 hover:text-white/60 sm:text-sm"
-          >
-            ⚙️ المشرف
           </Button>
         </motion.div>
 

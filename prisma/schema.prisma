@@ -24,6 +24,7 @@ model Child {
   totalPlayTime  Int      @default(0)
   comboCount     Int      @default(0)
   bestCombo      Int      @default(0)
+  pin            String?  // Optional 4-digit PIN
   parentId       String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt

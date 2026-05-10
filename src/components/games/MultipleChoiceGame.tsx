@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Clock, Zap, Star } from 'lucide-react';
+import { useSound } from '@/hooks/use-sound';
 
 interface MultipleChoiceGameProps {
   questions: Array<{
@@ -53,6 +54,7 @@ export default function MultipleChoiceGame({
   const [pointsAnimation, setPointsAnimation] = useState<{ points: number; key: number } | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const questionTimeRef = useRef(100);
+  const { play: playSound } = useSound();
 
   const currentQuestion = questions[currentIndex];
   const totalQuestions = questions.length;
@@ -111,10 +113,12 @@ export default function MultipleChoiceGame({
       if (newCombo > bestCombo) setBestCombo(newCombo);
       setFeedbackType('correct');
       setPointsAnimation({ points, key: Date.now() });
+      if (newCombo >= 3) { playSound('combo'); } else { playSound('correct'); }
     } else {
       setWrongCount((prev) => prev + 1);
       setCombo(0);
       setFeedbackType('wrong');
+      playSound('wrong');
     }
 
     setTimeout(() => {

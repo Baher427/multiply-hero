@@ -9,6 +9,8 @@ interface AppState {
   selectedGameType: GameType;
   isAdminMode: boolean;
   isParentMode: boolean;
+  isAuthenticated: boolean;
+  currentChildId: string | null;
   soundEnabled: boolean;
   musicEnabled: boolean;
   isLoading: boolean;
@@ -20,6 +22,8 @@ interface AppState {
   setSelectedGameType: (gameType: GameType) => void;
   setAdminMode: (val: boolean) => void;
   setParentMode: (val: boolean) => void;
+  authenticate: (childId: string) => void;
+  logout: () => void;
   toggleSound: () => void;
   toggleMusic: () => void;
   setLoading: (val: boolean) => void;
@@ -33,6 +37,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   selectedGameType: 'multiple-choice',
   isAdminMode: false,
   isParentMode: false,
+  isAuthenticated: false,
+  currentChildId: null,
   soundEnabled: true,
   musicEnabled: true,
   isLoading: false,
@@ -54,6 +60,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSelectedGameType: (gameType) => set({ selectedGameType: gameType }),
   setAdminMode: (val) => set({ isAdminMode: val }),
   setParentMode: (val) => set({ isParentMode: val }),
+  authenticate: (childId) => set({ isAuthenticated: true, currentChildId: childId }),
+  logout: () => set({
+    isAuthenticated: false,
+    currentChildId: null,
+    selectedChild: null,
+    currentView: 'landing',
+    previousView: null,
+  }),
   toggleSound: () => set((s) => ({ soundEnabled: !s.soundEnabled })),
   toggleMusic: () => set((s) => ({ musicEnabled: !s.musicEnabled })),
   setLoading: (val) => set({ isLoading: val }),
