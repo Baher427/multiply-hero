@@ -3,9 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider          = "postgresql"
-  url               = env("DATABASE_URL")
-  directUrl         = env("DIRECT_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Child {
@@ -30,14 +30,14 @@ model Child {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  tableProgress     TableProgress[]
-  gameSessions      GameSession[]
-  badges            Badge[]
-  unlockedAvatars   UnlockedAvatar[]
+  tableProgress       TableProgress[]
+  gameSessions        GameSession[]
+  badges              Badge[]
+  unlockedAvatars     UnlockedAvatar[]
   unlockedBackgrounds UnlockedBackground[]
-  challengeAttempts DailyChallengeAttempt[]
-  storyProgress     StoryProgress[]
-  parent            Parent?             @relation(fields: [parentId], references: [id])
+  challengeAttempts   DailyChallengeAttempt[]
+  storyProgress       StoryProgress[]
+  parent              Parent?              @relation(fields: [parentId], references: [id])
 }
 
 model Parent {
@@ -120,9 +120,9 @@ model DailyChallengeAttempt {
 }
 
 model UnlockedAvatar {
-  id        String   @id @default(cuid())
-  childId   String
-  avatarId  String
+  id         String   @id @default(cuid())
+  childId    String
+  avatarId   String
   unlockedAt DateTime @default(now())
 
   child Child @relation(fields: [childId], references: [id], onDelete: Cascade)
@@ -131,10 +131,10 @@ model UnlockedAvatar {
 }
 
 model UnlockedBackground {
-  id          String   @id @default(cuid())
-  childId     String
-  backgroundId String
-  unlockedAt  DateTime @default(now())
+  id            String   @id @default(cuid())
+  childId       String
+  backgroundId  String
+  unlockedAt    DateTime @default(now())
 
   child Child @relation(fields: [childId], references: [id], onDelete: Cascade)
 
