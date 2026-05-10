@@ -1,0 +1,159 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Child {
+  id             String   @id @default(cuid())
+  name           String
+  displayName    String
+  age            Int      @default(7)
+  avatarId       String   @default("lion")
+  favoriteColor  String   @default("emerald")
+  points         Int      @default(0)
+  level          Int      @default(1)
+  stars          Int      @default(0)
+  gems           Int      @default(0)
+  coins          Int      @default(0)
+  streak         Int      @default(0)
+  lastActiveDate String?
+  totalPlayTime  Int      @default(0)
+  comboCount     Int      @default(0)
+  bestCombo      Int      @default(0)
+  parentId       String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tableProgress     TableProgress[]
+  gameSessions      GameSession[]
+  badges            Badge[]
+  unlockedAvatars   UnlockedAvatar[]
+  unlockedBackgrounds UnlockedBackground[]
+  challengeAttempts DailyChallengeAttempt[]
+  storyProgress     StoryProgress[]
+  parent            Parent?             @relation(fields: [parentId], references: [id])
+}
+
+model Parent {
+  id        String  @id @default(cuid())
+  name      String
+  email     String  @unique
+  googleId  String? @unique
+  createdAt DateTime @default(now())
+
+  children Child[]
+}
+
+model TableProgress {
+  id             String   @id @default(cuid())
+  childId        String
+  tableNumber    Int
+  masteryLevel   Float    @default(0)
+  correctAnswers Int      @default(0)
+  wrongAnswers   Int      @default(0)
+  totalAttempts  Int      @default(0)
+  avgSpeed       Float    @default(0)
+  lastPracticed  DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  child Child @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@unique([childId, tableNumber])
+}
+
+model GameSession {
+  id           String   @id @default(cuid())
+  childId      String
+  gameType     String
+  tableNumber  Int      @default(0)
+  score        Int      @default(0)
+  correctCount Int      @default(0)
+  wrongCount   Int      @default(0)
+  duration     Int      @default(0)
+  questions    String   @default("[]")
+  completedAt  DateTime @default(now())
+
+  child Child @relation(fields: [childId], references: [id], onDelete: Cascade)
+}
+
+model Badge {
+  id        String   @id @default(cuid())
+  childId   String
+  badgeType String
+  earnedAt  DateTime @default(now())
+
+  child Child @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@unique([childId, badgeType])
+}
+
+model DailyChallenge {
+  id        String   @id @default(cuid())
+  date      String   @unique
+  tables    String   @default("[]")
+  questions String   @default("[]")
+  reward    Int      @default(50)
+  createdAt DateTime @default(now())
+
+  attempts DailyChallengeAttempt[]
+}
+
+model DailyChallengeAttempt {
+  id          String  @id @default(cuid())
+  childId     String
+  challengeId String
+  completed   Boolean @default(false)
+  score       Int     @default(0)
+  completedAt DateTime @default(now())
+
+  child     Child          @relation(fields: [childId], references: [id], onDelete: Cascade)
+  challenge DailyChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@unique([childId, challengeId])
+}
+
+model UnlockedAvatar {
+  id        String   @id @default(cuid())
+  childId   String
+  avatarId  String
+  unlockedAt DateTime @default(now())
+
+  child Child @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@unique([childId, avatarId])
+}
+
+model UnlockedBackground {
+  id          String   @id @default(cuid())
+  childId     String
+  backgroundId String
+  unlockedAt  DateTime @default(now())
+
+  child Child @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@unique([childId, backgroundId])
+}
+
+model StoryProgress {
+  id               String   @id @default(cuid())
+  childId          String
+  tableNumber      Int
+  chapterCompleted Int      @default(0)
+  completedAt      DateTime @default(now())
+
+  child Child @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@unique([childId, tableNumber])
+}
+
+model Admin {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
