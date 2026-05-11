@@ -7,6 +7,7 @@ import { UserPlus, User, Lock, Eye, EyeOff, Mail, ArrowRight, Loader2, Shield, U
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { usePostAuthNavigation } from '@/lib/navigation';
 import { AVATARS, COLORS } from '@/lib/game-engine/constants';
 import Link from 'next/link';
 
@@ -15,6 +16,7 @@ type RegisterStep = 'account' | 'profile' | 'avatar';
 export default function RegisterPage() {
   const router = useRouter();
   const { register } = useAuth();
+  const { navigateAfterAuth } = usePostAuthNavigation();
 
   const [step, setStep] = useState<RegisterStep>('account');
   const [isLoading, setIsLoading] = useState(false);
@@ -85,7 +87,9 @@ export default function RegisterPage() {
       });
 
       if (result.success) {
-        router.push('/dashboard');
+        // Use replace so register page is removed from history
+        // Pressing back from dashboard will NOT return to register
+        navigateAfterAuth('/dashboard');
       } else {
         setError(result.error || 'فشل إنشاء الحساب');
       }

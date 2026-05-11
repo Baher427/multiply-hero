@@ -1,20 +1,17 @@
 'use client';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/components/auth/AuthProvider';
 import { useAppStore } from '@/stores/auth-store';
+import { useAuthGuard, useSmartBack } from '@/lib/navigation';
 import ProgressMap from '@/components/world/ProgressMap';
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { TableProgressData } from '@/types';
 
 export default function WorldMapPage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading, selectedChild } = useAuth();
+  const { isAuthenticated, isLoading, selectedChild } = useAuthGuard();
   const { setSelectedTable } = useAppStore();
   const [tableProgress, setTableProgress] = useState<TableProgressData[]>([]);
-
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) router.push('/login');
-  }, [isLoading, isAuthenticated, router]);
+  const { goBack } = useSmartBack('/dashboard');
 
   useEffect(() => {
     if (selectedChild) {
@@ -34,7 +31,7 @@ export default function WorldMapPage() {
         setSelectedTable(tableNumber);
         router.push('/games');
       }}
-      onBack={() => router.push('/dashboard')}
+      onBack={goBack}
     />
   );
 }

@@ -7,6 +7,7 @@ import { LogIn, User, Lock, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-reac
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { usePostAuthNavigation } from '@/lib/navigation';
 import Link from 'next/link';
 
 export default function LoginPageNew() {
@@ -14,6 +15,7 @@ export default function LoginPageNew() {
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect') || '/dashboard';
   const { login } = useAuth();
+  const { navigateAfterAuth } = usePostAuthNavigation();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -29,7 +31,9 @@ export default function LoginPageNew() {
     try {
       const result = await login(username, password);
       if (result.success) {
-        router.push(redirect);
+        // Use replace so login page is removed from history
+        // Pressing back from dashboard will NOT return to login
+        navigateAfterAuth(redirect);
       } else {
         setError(result.error || 'فشل تسجيل الدخول');
       }

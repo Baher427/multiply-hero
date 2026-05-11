@@ -1,29 +1,29 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/components/auth/AuthProvider';
 import { useGameStore } from '@/stores/game-store';
+import { useAuthGuard, useSmartBack } from '@/lib/navigation';
 import MultipleChoiceGame from '@/components/games/MultipleChoiceGame';
 import TrueFalseGame from '@/components/games/TrueFalseGame';
 import MatchingGame from '@/components/games/MatchingGame';
 import FillBlankGame from '@/components/games/FillBlankGame';
 import { Loader2 } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { calculateScore } from '@/lib/game-engine/scoring-engine';
 import type { ScoringResult } from '@/lib/game-engine/scoring-engine';
 
 export default function GamePlayPage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading, selectedChild } = useAuth();
+  const { isAuthenticated, isLoading, selectedChild } = useAuthGuard();
   const { gameConfig, questions, endGame, selectedGameType } = useGameStore();
+  const { goBack } = useSmartBack('/games');
+  const noGameRedirectedRef = useRef(false);
 
+  // If no game is active, redirect to game selector (use replace to not pollute history)
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push('/login');
-    }
-    // If no game is active, redirect to game selector
-    if (!isLoading && (!gameConfig || questions.length === 0)) {
-      router.push('/games');
+    if (!isLoading && isAuthenticated && !gameConfig && questions.length === 0 && !noGameRedirectedRef.current) {
+      noGameRedirectedRef.current = true;
+      router.replace('/games');
     }
   }, [isLoading, isAuthenticated, gameConfig, questions.length, router]);
 
@@ -102,15 +102,21 @@ export default function GamePlayPage() {
     );
   }
 
+  const handleBack = () => {
+    // Going back from game play should use replace so the play page
+    // is removed from history (user can't accidentally return to a finished game)
+    router.replace('/games');
+  };
+
   switch (gameConfig.gameType) {
     case 'multiple-choice':
-      return <MultipleChoiceGame questions={questions} onComplete={handleGameComplete} onBack={() => router.push('/games')} />;
+      return <MultipleChoiceGame questions={questions} onComplete={handleGameComplete} onBack={handleBack} />;
     case 'true-false':
-      return <TrueFalseGame questions={questions} onComplete={handleGameComplete} onBack={() => router.push('/games')} />;
+      return <TrueFalseGame questions={questions} onComplete={handleGameComplete} onBack={handleBack} />;
     case 'matching':
-      return <MatchingGame questions={questions} onComplete={handleGameComplete} onBack={() => router.push('/games')} />;
+      return <MatchingGame questions={questions} onComplete={handleGameComplete} onBack={handleBack} />;
     case 'fill-blank':
-      return <FillBlankGame questions={questions} onComplete={handleGameComplete} onBack={() => router.push('/games')} />;
+      return <FillBlankGame questions={questions} onComplete={handleGameComplete} onBack={handleBack} />;
     default:
       return null;
   }

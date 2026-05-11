@@ -5,15 +5,18 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useAppStore } from '@/stores/auth-store';
 import { useGameStore } from '@/stores/game-store';
+import { useAuthGuard, useLogoutNavigation } from '@/lib/navigation';
 import ChildDashboard from '@/components/dashboard/ChildDashboard';
-import type { ChildProfile, TableProgressData } from '@/types';
+import type { TableProgressData } from '@/types';
 import { Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, isAuthenticated, isLoading, selectedChild, setSelectedChild, logout } = useAuth();
+  const { isAuthenticated, isLoading, user, selectedChild, setSelectedChild } = useAuthGuard();
   const { setSelectedTable, setSelectedGameType } = useAppStore();
+  const { navigateAfterLogout } = useLogoutNavigation();
+  const { logout } = useAuth();
 
   const [tableProgress, setTableProgress] = useState<TableProgressData[]>([]);
   const [earnedBadges, setEarnedBadges] = useState<Array<{ badgeType: string; earnedAt: string }>>([]);
@@ -36,13 +39,6 @@ export default function DashboardPage() {
       setIsLoadingData(false);
     }
   }, []);
-
-  // Redirect if not authenticated
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push('/login');
-    }
-  }, [isLoading, isAuthenticated, router]);
 
   // Load child data
   useEffect(() => {
@@ -112,7 +108,7 @@ export default function DashboardPage() {
       onSpeedTest={() => router.push('/speed-test')}
       onBack={async () => {
         await logout();
-        router.push('/');
+        navigateAfterLogout();
       }}
     />
   );

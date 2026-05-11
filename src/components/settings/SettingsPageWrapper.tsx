@@ -1,18 +1,14 @@
 'use client';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/components/auth/AuthProvider';
 import { useAppStore } from '@/stores/auth-store';
+import { useAuthGuard, useSmartBack } from '@/lib/navigation';
 import SettingsPage from '@/components/settings/SettingsPage';
-import { useEffect } from 'react';
 
 export default function SettingsPageWrapper() {
   const router = useRouter();
-  const { isAuthenticated, isLoading, selectedChild, setSelectedChild } = useAuth();
+  const { isAuthenticated, isLoading, selectedChild, setSelectedChild } = useAuthGuard();
   const { soundEnabled, musicEnabled, toggleSound, toggleMusic } = useAppStore();
-
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) router.push('/login');
-  }, [isLoading, isAuthenticated, router]);
+  const { goBack } = useSmartBack('/dashboard');
 
   const handleUpdateProfile = async (updates: Partial<{ displayName: string; avatarId: string; favoriteColor: string }>) => {
     if (!selectedChild) return;
@@ -34,7 +30,7 @@ export default function SettingsPageWrapper() {
   return (
     <SettingsPage
       child={selectedChild}
-      onBack={() => router.push('/dashboard')}
+      onBack={goBack}
       onUpdateProfile={handleUpdateProfile}
       soundEnabled={soundEnabled}
       musicEnabled={musicEnabled}

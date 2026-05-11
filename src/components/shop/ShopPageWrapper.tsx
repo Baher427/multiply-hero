@@ -1,16 +1,12 @@
 'use client';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/components/auth/AuthProvider';
+import { useAuthGuard, useSmartBack } from '@/lib/navigation';
 import ShopPage from '@/components/shop/ShopPage';
-import { useEffect } from 'react';
 
 export default function ShopPageWrapper() {
   const router = useRouter();
-  const { isAuthenticated, isLoading, selectedChild, setSelectedChild } = useAuth();
-
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) router.push('/login');
-  }, [isLoading, isAuthenticated, router]);
+  const { isAuthenticated, isLoading, selectedChild, setSelectedChild } = useAuthGuard();
+  const { goBack } = useSmartBack('/dashboard');
 
   const handlePurchase = async (itemType: string, itemId: string, cost: number, currency: 'coins' | 'gems') => {
     if (!selectedChild) return;
@@ -40,7 +36,7 @@ export default function ShopPageWrapper() {
         points: selectedChild.points,
         level: selectedChild.level,
       }}
-      onBack={() => router.push('/dashboard')}
+      onBack={goBack}
       onPurchase={handlePurchase}
     />
   );

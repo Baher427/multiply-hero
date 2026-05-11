@@ -1,18 +1,14 @@
 'use client';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/components/auth/AuthProvider';
 import { useGameStore } from '@/stores/game-store';
+import { useAuthGuard, useSmartBack } from '@/lib/navigation';
 import SpeedTestPage from '@/components/speedtest/SpeedTestPage';
-import { useEffect } from 'react';
 
 export default function SpeedTestPageWrapper() {
   const router = useRouter();
-  const { isAuthenticated, isLoading, selectedChild } = useAuth();
+  const { isAuthenticated, isLoading, selectedChild } = useAuthGuard();
   const { startGame } = useGameStore();
-
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) router.push('/login');
-  }, [isLoading, isAuthenticated, router]);
+  const { goBack } = useSmartBack('/dashboard');
 
   const handleComplete = (result: any) => {
     const enrichedResult = {
@@ -47,5 +43,5 @@ export default function SpeedTestPageWrapper() {
 
   if (isLoading || !isAuthenticated) return <div dir="rtl" className="min-h-screen flex items-center justify-center bg-gradient-to-bl from-slate-900 via-slate-800 to-emerald-900"><div className="text-white/50">جاري التحميل...</div></div>;
 
-  return <SpeedTestPage onBack={() => router.push('/dashboard')} onComplete={handleComplete} />;
+  return <SpeedTestPage onBack={goBack} onComplete={handleComplete} />;
 }

@@ -1,24 +1,25 @@
 'use client';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { useAuthGuard, useLogoutNavigation, useSmartBack } from '@/lib/navigation';
 import { motion } from 'framer-motion';
 import { ArrowRight, LogOut, User, Shield, Settings, Gamepad2, Trophy, Star, Coins, Gem } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AVATARS } from '@/lib/game-engine/constants';
-import { useEffect } from 'react';
 import Link from 'next/link';
 
 export default function ProfilePage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading, selectedChild, logout } = useAuth();
+  const { navigateAfterLogout } = useLogoutNavigation();
+  const { goBack } = useSmartBack('/dashboard');
 
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) router.push('/login');
-  }, [isLoading, isAuthenticated, router]);
+  // Use centralized auth guard
+  useAuthGuard();
 
   const handleLogout = async () => {
     await logout();
-    router.push('/');
+    navigateAfterLogout();
   };
 
   if (isLoading || !isAuthenticated || !user) return <div dir="rtl" className="min-h-screen flex items-center justify-center bg-gradient-to-bl from-slate-900 via-slate-800 to-emerald-900"><div className="text-white/50">جاري التحميل...</div></div>;
@@ -30,7 +31,7 @@ export default function ProfilePage() {
       <div className="max-w-lg mx-auto">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => router.back()} className="text-white/50 hover:text-white transition-colors">
+          <button onClick={goBack} className="text-white/50 hover:text-white transition-colors">
             <ArrowRight className="w-6 h-6" />
           </button>
           <h1 className="text-xl font-bold text-white">الملف الشخصي</h1>

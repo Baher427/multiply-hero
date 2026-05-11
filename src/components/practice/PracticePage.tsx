@@ -1,24 +1,21 @@
 'use client';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/components/auth/AuthProvider';
 import { useAppStore } from '@/stores/auth-store';
 import { useGameStore } from '@/stores/game-store';
+import { useAuthGuard, useSmartBack } from '@/lib/navigation';
 import PracticeMode from '@/components/practice/PracticeMode';
 import { generateQuestions } from '@/lib/game-engine/question-generator';
 import type { GameConfig } from '@/types';
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { TableProgressData } from '@/types';
 
 export default function PracticePage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading, selectedChild } = useAuth();
+  const { isAuthenticated, isLoading, selectedChild } = useAuthGuard();
   const { setSelectedTable, setSelectedGameType } = useAppStore();
   const { startGame } = useGameStore();
   const [tableProgress, setTableProgress] = useState<TableProgressData[]>([]);
-
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) router.push('/login');
-  }, [isLoading, isAuthenticated, router]);
+  const { goBack } = useSmartBack('/dashboard');
 
   useEffect(() => {
     if (selectedChild) {
@@ -58,7 +55,7 @@ export default function PracticePage() {
         level: selectedChild.level,
       }}
       tableProgress={tableProgress}
-      onBack={() => router.push('/dashboard')}
+      onBack={goBack}
       onStartGame={handleStartGame}
     />
   );

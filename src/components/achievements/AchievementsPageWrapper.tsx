@@ -1,17 +1,14 @@
 'use client';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/components/auth/AuthProvider';
+import { useAuthGuard, useSmartBack } from '@/lib/navigation';
 import AchievementsPage from '@/components/achievements/AchievementsPage';
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function AchievementsPageWrapper() {
   const router = useRouter();
-  const { isAuthenticated, isLoading, selectedChild } = useAuth();
+  const { isAuthenticated, isLoading, selectedChild } = useAuthGuard();
   const [earnedBadges, setEarnedBadges] = useState<Array<{ badgeType: string; earnedAt: string }>>([]);
-
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) router.push('/login');
-  }, [isLoading, isAuthenticated, router]);
+  const { goBack } = useSmartBack('/dashboard');
 
   useEffect(() => {
     if (selectedChild) {
@@ -24,5 +21,5 @@ export default function AchievementsPageWrapper() {
 
   if (isLoading || !isAuthenticated) return <div dir="rtl" className="min-h-screen flex items-center justify-center bg-gradient-to-bl from-slate-900 via-slate-800 to-emerald-900"><div className="text-white/50">جاري التحميل...</div></div>;
 
-  return <AchievementsPage earnedBadges={earnedBadges} onBack={() => router.push('/dashboard')} />;
+  return <AchievementsPage earnedBadges={earnedBadges} onBack={goBack} />;
 }

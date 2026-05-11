@@ -1,16 +1,12 @@
 'use client';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/components/auth/AuthProvider';
+import { useAuthGuard, useSmartBack } from '@/lib/navigation';
 import LeaderboardPage from '@/components/leaderboard/LeaderboardPage';
-import { useEffect } from 'react';
 
 export default function LeaderboardPageWrapper() {
   const router = useRouter();
-  const { isAuthenticated, isLoading, selectedChild } = useAuth();
-
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) router.push('/login');
-  }, [isLoading, isAuthenticated, router]);
+  const { isAuthenticated, isLoading, selectedChild } = useAuthGuard();
+  const { goBack } = useSmartBack('/dashboard');
 
   if (isLoading || !isAuthenticated || !selectedChild) return <div dir="rtl" className="min-h-screen flex items-center justify-center bg-gradient-to-bl from-slate-900 via-slate-800 to-emerald-900"><div className="text-white/50">جاري التحميل...</div></div>;
 
@@ -24,7 +20,7 @@ export default function LeaderboardPageWrapper() {
         points: selectedChild.points,
         level: selectedChild.level,
       }}
-      onBack={() => router.push('/dashboard')}
+      onBack={goBack}
     />
   );
 }

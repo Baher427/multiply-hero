@@ -1,22 +1,18 @@
 'use client';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/components/auth/AuthProvider';
 import { useAppStore } from '@/stores/auth-store';
 import { useGameStore } from '@/stores/game-store';
+import { useAuthGuard, useSmartBack } from '@/lib/navigation';
 import DailyChallenge from '@/components/challenges/DailyChallenge';
 import { generateQuestions } from '@/lib/game-engine/question-generator';
 import type { GameConfig } from '@/types';
-import { useEffect } from 'react';
 
 export default function DailyChallengePage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading, selectedChild } = useAuth();
+  const { isAuthenticated, isLoading, selectedChild } = useAuthGuard();
   const { setSelectedTable, setSelectedGameType } = useAppStore();
   const { startGame } = useGameStore();
-
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) router.push('/login');
-  }, [isLoading, isAuthenticated, router]);
+  const { goBack } = useSmartBack('/dashboard');
 
   const handleStartChallenge = (tables: number[], difficulty: 'easy' | 'medium' | 'hard') => {
     const config: GameConfig = {
@@ -39,7 +35,7 @@ export default function DailyChallengePage() {
       streak={selectedChild?.streak || 0}
       lastActiveDate={selectedChild?.lastActiveDate || null}
       onStartChallenge={handleStartChallenge}
-      onBack={() => router.push('/dashboard')}
+      onBack={goBack}
     />
   );
 }
