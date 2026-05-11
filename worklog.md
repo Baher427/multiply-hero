@@ -133,3 +133,83 @@ Created 18 individual route pages:
 - **Fix**: Wrapped `<LoginPage />` in `<Suspense>` with a loading fallback in `/src/app/login/page.tsx`
 - **Result**: Lint passes, code pushed to GitHub (commit 80b8e30), Vercel rebuild should succeed
 - **Files Changed**: `src/app/login/page.tsx`
+
+---
+
+## Phase: Mobile Back Button & Navigation History Support
+
+### Task ID: 9 - Professional Browser/Mobile Back Button Support
+
+#### Problem
+The app had critical navigation issues causing broken back-button behavior on mobile and desktop:
+1. **Infinite back-button loops**: Auth-guard redirects used `router.push('/login')`, adding the protected page AND login to history. Pressing back returned to the protected page → redirect → login → back → loop.
+2. **Post-login back goes to login**: After successful login, `router.push(redirect)` kept login in history. Pressing back returned to the login page.
+3. **Post-logout back goes to protected page**: After logout, `router.push('/')` kept the protected page in history.
+4. **No-game-state loops**: Game play page with no config used `router.push('/games')`, creating loops.
+5. **Inconsistent back buttons**: ProfilePage used `router.back()` while all others used `router.push('/dashboard')`.
+6. **Lost redirect params**: Client-side auth guards dropped the `?redirect=` param set by middleware.
+
+#### Solution: Navigation Utility Library
+Created `/src/lib/navigation.ts` with 4 specialized hooks:
+
+1. **`useAuthGuard()`** - Centralized auth guard:
+   - Uses `router.replace('/login?redirect=...')` instead of `router.push('/login')`
+   - Prevents protected page from staying in history (no infinite loops)
+   - Preserves redirect param for post-login return
+   - Supports role-based access (`requiredRole` option)
+   - Admin access to parent pages included
+   - Dedup redirect protection via ref
+
+2. **`useSmartBack(fallbackPath)`** - Smart back navigation:
+   - Tracks navigation history internally
+   - Uses `router.back()` when there's valid browser history
+   - Falls back to specified path when no history (deep links)
+   - Avoids going back to `/login` pages
+
+3. **`usePostAuthNavigation()`** - Post-login/register navigation:
+   - Uses `router.replace()` to remove auth pages from history
+   - Respects `?redirect=` param for return-to functionality
+
+4. **`useLogoutNavigation()`** - Post-logout navigation:
+   - Uses `router.replace('/')` to remove protected pages from history
+
+#### Created: BackButton Component (`src/components/ui/back-button.tsx`)
+- RTL-aware (arrow points right for Arabic)
+- Smart history detection
+- Multiple style variants (default, ghost, minimal)
+- Framer Motion hover/tap animations
+
+#### Fixed: 16 Page Components
+All pages updated to use the new navigation hooks:
+- DashboardPage, GamesPage, GamePlayPage, GameResultsPage
+- ProfilePage, AdminPage, ParentPage, SettingsPageWrapper
+- DailyChallengePage, WorldMapPage, AchievementsPageWrapper
+- ShopPageWrapper, LeaderboardPageWrapper, PracticePage
+- SpeedTestPageWrapper, StoryModePage
+- LoginPageNew, RegisterPage
+
+#### Navigation Flow Examples (After Fix)
+```
+Dashboard → Games → Play:
+  Back button: Play → Games → Dashboard ✅
+
+Protected page (no auth):
+  /games → middleware 307 to /login?redirect=/games
+  After login: → /games (login NOT in history) ✅
+
+After login:
+  /dashboard → press back → does NOT return to /login ✅
+
+After logout:
+  / → press back → does NOT return to /dashboard ✅
+
+Phone back gesture:
+  Follows natural browser history ✅
+```
+
+#### Files Changed (20 files)
+- `src/lib/navigation.ts` (NEW)
+- `src/components/ui/back-button.tsx` (NEW)
+- 18 component files updated
+
+#### Commit: 3dfae21 pushed to GitHub
