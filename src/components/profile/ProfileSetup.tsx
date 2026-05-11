@@ -363,15 +363,12 @@ function Step2({
                 whileHover={!isLocked ? { scale: 1.08 } : {}}
                 whileTap={!isLocked ? { scale: 0.95 } : {}}
               >
-                {has3DAvatar(avatar.id) ? (
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 mx-auto">
-                    <AvatarImage avatarId={avatar.id} size={48} className={`${isLocked ? 'grayscale opacity-50' : ''}`} />
-                  </div>
-                ) : (
-                  <span className={`text-3xl sm:text-4xl ${isLocked ? 'grayscale' : ''}`}>
-                    {avatar.emoji}
-                  </span>
-                )}
+                <AvatarImage
+                  avatarId={avatar.id}
+                  size="md"
+                  className={`${isLocked ? 'grayscale opacity-50' : ''}`}
+                  animate={!isLocked}
+                />
                 <span className="text-[10px] sm:text-xs font-bold text-gray-600 mt-1 text-center leading-tight">
                   {avatar.name}
                 </span>
@@ -413,13 +410,7 @@ function Step2({
           >
             <Card className="inline-block border-2 border-rose-200 bg-gradient-to-br from-rose-50 to-amber-50 shadow-lg">
               <CardContent className="p-4 sm:p-6 flex items-center gap-3 sm:gap-4">
-                {has3DAvatar(selectedAvatar.id) ? (
-                    <div className="w-14 h-14 sm:w-16 sm:h-16">
-                      <AvatarImage avatarId={selectedAvatar.id} size={64} />
-                    </div>
-                  ) : (
-                    <span className="text-4xl sm:text-5xl">{selectedAvatar.emoji}</span>
-                  )}
+                <AvatarImage avatarId={selectedAvatar.id} size="lg" animate />
                 <div className="text-right">
                   <p className="text-gray-500 text-xs sm:text-sm">شخصيتك</p>
                   <p className="text-lg sm:text-xl font-extrabold text-rose-600">
@@ -575,13 +566,7 @@ function Step3({
             <Card className="inline-block border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 shadow-lg">
               <CardContent className="p-4 sm:p-6 flex items-center gap-3 sm:gap-4" dir="rtl">
                 {selectedAvatar && (
-                  has3DAvatar(selectedAvatar.id) ? (
-                    <div className="w-12 h-12 sm:w-14 sm:h-14">
-                      <AvatarImage avatarId={selectedAvatar.id} size={56} />
-                    </div>
-                  ) : (
-                    <span className="text-3xl sm:text-4xl">{selectedAvatar.emoji}</span>
-                  )
+                  <AvatarImage avatarId={selectedAvatar.id} size="lg" animate />
                 )}
                 <div className="text-right">
                   <p className="text-lg sm:text-xl font-extrabold text-emerald-600">

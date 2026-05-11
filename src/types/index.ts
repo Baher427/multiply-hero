@@ -50,11 +50,14 @@ export interface GameResult {
   combo: number;
   bestCombo: number;
   duration: number;
+  avgResponseTime?: number; // in ms
+  responseTimes?: number[];
   pointsEarned: number;
   starsEarned: number;
   coinsEarned: number;
   gemsEarned: number;
   newBadges: string[];
+  scoringResult?: import('@/lib/game-engine/scoring-engine').ScoringResult;
 }
 
 // ===== Child Profile =====
@@ -123,6 +126,7 @@ export interface AvatarDef {
   emoji: string;
   category: 'animal' | 'emoji' | 'fruit' | 'object' | 'character';
   unlockLevel: number;
+  imagePath?: string;
 }
 
 // ===== World / Map =====
@@ -133,6 +137,7 @@ export interface WorldTheme {
   bgColor: string;
   accentColor: string;
   description: string;
+  gradientCSS?: string;
 }
 
 // ===== AI Coach =====

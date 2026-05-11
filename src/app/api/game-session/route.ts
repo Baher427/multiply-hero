@@ -1,17 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-
-// Level thresholds: level = points / threshold
-const LEVEL_THRESHOLDS = [0, 50, 150, 300, 500, 800, 1200, 1800, 2500, 3500, 5000, 7000, 10000];
-
-export { LEVEL_THRESHOLDS };
-
-function calculateLevel(points: number): number {
-  for (let i = LEVEL_THRESHOLDS.length - 1; i >= 0; i--) {
-    if (points >= LEVEL_THRESHOLDS[i]) return i + 1;
-  }
-  return 1;
-}
+import { getLevelFromXP, getXPForLevel, calculateMasteryChange, getPerformanceRating, getAccuracyPercentage } from '@/lib/game-engine/scoring-engine';
 
 export async function GET(req: NextRequest) {
   try {
@@ -38,36 +27,49 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { childId, gameType, tableNumber, score, correctCount, wrongCount, duration, questions, bestCombo } = body;
+    const {
+      childId, gameType, tableNumber, score, correctCount, wrongCount, duration,
+      questions, bestCombo, avgResponseTime, responseTimes,
+      // Scoring engine results
+      totalPoints, xpEarned, coinsEarned, gemsEarned, starsEarned,
+      masteryChange, newLevel, leveledUp, performanceRating,
+      basePoints, comboBonus, speedBonus, accuracyBonus, difficultyMultiplier,
+    } = body;
 
     if (!childId || !gameType) {
       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
     }
 
+    // Save response times as JSON if provided
+    const sessionData: Record<string, unknown> = {
+      childId,
+      gameType,
+      tableNumber: tableNumber || 0,
+      score: totalPoints || score || 0,
+      correctCount: correctCount || 0,
+      wrongCount: wrongCount || 0,
+      duration: duration || 0,
+      questions: JSON.stringify(questions || []),
+    };
+
     const session = await db.gameSession.create({
-      data: {
-        childId,
-        gameType,
-        tableNumber: tableNumber || 0,
-        score: score || 0,
-        correctCount: correctCount || 0,
-        wrongCount: wrongCount || 0,
-        duration: duration || 0,
-        questions: JSON.stringify(questions || []),
-      },
+      data: sessionData as Parameters<typeof db.gameSession.create>[0]['data'],
     });
 
-    // Update child's points and stats
+    // Update child's points and stats using scoring engine
     const child = await db.child.findUnique({ where: { id: childId } });
     if (child) {
-      const accuracy = (correctCount + wrongCount) > 0 ? correctCount / (correctCount + wrongCount) * 100 : 0;
-      let starsEarned = 0;
-      if (accuracy >= 90) starsEarned = 3;
-      else if (accuracy >= 70) starsEarned = 2;
-      else if (accuracy >= 50) starsEarned = 1;
+      const accuracy = getAccuracyPercentage(correctCount || 0, wrongCount || 0);
+      const calculatedStars = starsEarned ?? (accuracy >= 90 ? 3 : accuracy >= 70 ? 2 : accuracy >= 50 ? 1 : 0);
+      const calculatedPoints = totalPoints || score || 0;
+      const calculatedCoins = coinsEarned ?? Math.floor(calculatedPoints / 5);
+      const calculatedGems = gemsEarned ?? (calculatedStars === 3 ? 2 : calculatedStars === 2 ? 1 : 0);
 
-      const newPoints = child.points + (score || 0);
-      const newLevel = calculateLevel(newPoints);
+      // Calculate XP using scoring engine
+      const currentXP = (child as Record<string, unknown>).xp as number || 0;
+      const calculatedXP = xpEarned ?? Math.floor(calculatedPoints * 0.8);
+      const newTotalXP = currentXP + calculatedXP;
+      const calculatedLevel = newLevel ?? getLevelFromXP(newTotalXP);
 
       // Update streak: if played today, keep streak; if not played yesterday, reset to 1
       const today = new Date().toISOString().split('T')[0];
@@ -86,16 +88,19 @@ export async function POST(req: NextRequest) {
       // Update combo - use bestCombo from game result if provided
       const newBestCombo = bestCombo != null
         ? Math.max(child.bestCombo, bestCombo)
-        : Math.max(child.bestCombo, correctCount > 0 && wrongCount === 0 ? correctCount : child.bestCombo);
+        : Math.max(child.bestCombo, (correctCount || 0) > 0 && (wrongCount || 0) === 0 ? (correctCount || 0) : child.bestCombo);
+
+      // Calculate performance rating if not provided
+      const rating = performanceRating || getPerformanceRating(accuracy, avgResponseTime || 0);
 
       await db.child.update({
         where: { id: childId },
         data: {
-          points: newPoints,
-          level: newLevel,
-          stars: child.stars + starsEarned,
-          coins: child.coins + Math.floor((score || 0) / 5),
-          gems: child.gems + (starsEarned === 3 ? 2 : starsEarned === 2 ? 1 : 0),
+          points: child.points + calculatedPoints,
+          level: calculatedLevel,
+          stars: child.stars + calculatedStars,
+          coins: child.coins + calculatedCoins,
+          gems: child.gems + calculatedGems,
           totalPlayTime: child.totalPlayTime + (duration || 0),
           lastActiveDate: today,
           streak: newStreak,
@@ -103,14 +108,49 @@ export async function POST(req: NextRequest) {
         },
       });
 
+      // Update mastery for affected tables
+      if (masteryChange !== undefined && masteryChange !== 0) {
+        const tables = (tableNumber || 0) === 0
+          ? [1, 2, 3, 4, 5, 6, 7, 8, 9]
+          : [tableNumber as number];
+
+        for (const t of tables) {
+          const existingProgress = await db.tableProgress.findUnique({
+            where: { childId_tableNumber: { childId, tableNumber: t } },
+          });
+
+          if (existingProgress) {
+            const currentMastery = existingProgress.masteryLevel;
+            const newMastery = Math.max(0, Math.min(1, currentMastery + (masteryChange / tables.length)));
+            await db.tableProgress.update({
+              where: { id: existingProgress.id },
+              data: {
+                masteryLevel: newMastery,
+                correctAnswers: existingProgress.correctAnswers + Math.round((correctCount || 0) / tables.length),
+                wrongAnswers: existingProgress.wrongAnswers + Math.round((wrongCount || 0) / tables.length),
+                totalAttempts: existingProgress.totalAttempts + Math.round(((correctCount || 0) + (wrongCount || 0)) / tables.length),
+                avgSpeed: avgResponseTime || existingProgress.avgSpeed,
+                lastPracticed: new Date().toISOString(),
+              },
+            });
+          }
+        }
+      }
+
       return NextResponse.json({ 
         success: true, 
         data: session,
         meta: {
-          newLevel,
-          levelUp: newLevel > child.level,
-          starsEarned,
+          newLevel: calculatedLevel,
+          levelUp: leveledUp ?? (calculatedLevel > child.level),
+          starsEarned: calculatedStars,
           streakUpdated: newStreak !== child.streak,
+          xpEarned: calculatedXP,
+          totalXP: newTotalXP,
+          performanceRating: rating,
+          coinsEarned: calculatedCoins,
+          gemsEarned: calculatedGems,
+          masteryChange: masteryChange || 0,
         }
       });
     }

@@ -15,10 +15,25 @@ interface GameResultsProps {
     combo: number;
     bestCombo: number;
     duration: number;
+    avgResponseTime?: number;
     pointsEarned: number;
     starsEarned: number;
     coinsEarned: number;
     gemsEarned: number;
+    performanceRating?: {
+      rating: string;
+      description: string;
+      emoji: string;
+    };
+    leveledUp?: boolean;
+    newLevel?: number;
+    basePoints?: number;
+    comboBonus?: number;
+    speedBonus?: number;
+    accuracyBonus?: number;
+    difficultyMultiplier?: number;
+    xpEarned?: number;
+    masteryChange?: number;
   };
   onPlayAgain: () => void;
   onDashboard: () => void;
@@ -193,6 +208,20 @@ export default function GameResults({ result, onPlayAgain, onDashboard }: GameRe
   const isPerfectScore = accuracy === 100 && result.correctCount > 0;
   const isHighScore = accuracy >= 80;
 
+  // Get performance rating color
+  const getRatingColor = (rating: string): string => {
+    switch (rating) {
+      case 'SSS': return 'from-amber-400 to-yellow-500';
+      case 'SS': return 'from-orange-400 to-amber-500';
+      case 'S': return 'from-red-400 to-rose-500';
+      case 'A': return 'from-violet-400 to-purple-500';
+      case 'B': return 'from-blue-400 to-indigo-500';
+      case 'C': return 'from-gray-400 to-slate-500';
+      case 'D': return 'from-gray-300 to-gray-400';
+      default: return 'from-gray-400 to-slate-500';
+    }
+  };
+
   // Determine achievements
   const achievements: Array<{ icon: string; label: string }> = [];
   if (isPerfectScore) achievements.push({ icon: '💎', label: 'لعبة مثالية!' });
@@ -304,6 +333,22 @@ export default function GameResults({ result, onPlayAgain, onDashboard }: GameRe
         >
           <StarRating count={result.starsEarned} />
         </motion.div>
+
+        {/* Performance Rating Badge */}
+        {result.performanceRating && (
+          <motion.div
+            initial={{ scale: 0, y: 10 }}
+            animate={{ scale: 1, y: 0 }}
+            transition={{ delay: 0.7, type: 'spring', stiffness: 200, damping: 15 }}
+            className="mb-4"
+          >
+            <div className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-l ${getRatingColor(result.performanceRating.rating)} shadow-lg`}>
+              <span className="text-2xl">{result.performanceRating.emoji}</span>
+              <span className="text-2xl font-black text-white drop-shadow-md">{result.performanceRating.rating}</span>
+              <span className="text-sm font-bold text-white/80">{result.performanceRating.description}</span>
+            </div>
+          </motion.div>
+        )}
 
         {/* Stats Cards */}
         <motion.div
@@ -431,6 +476,45 @@ export default function GameResults({ result, onPlayAgain, onDashboard }: GameRe
               </motion.div>
             </div>
           </Card>
+
+          {/* Score Breakdown (if scoring engine data available) */}
+          {(result.basePoints !== undefined || result.comboBonus !== undefined || result.speedBonus !== undefined) && (
+            <Card className="p-4 bg-gradient-to-l from-indigo-50 to-white border-indigo-200">
+              <p className="text-sm font-bold text-indigo-700 mb-3 text-center">📊 تفاصيل النقاط</p>
+              <div className="grid grid-cols-2 gap-2 text-center">
+                {result.basePoints !== undefined && (
+                  <div className="p-2 rounded-lg bg-white/60">
+                    <div className="text-xs text-gray-500">أساسي</div>
+                    <div className="text-lg font-bold text-indigo-600">+{result.basePoints}</div>
+                  </div>
+                )}
+                {result.comboBonus !== undefined && result.comboBonus > 0 && (
+                  <div className="p-2 rounded-lg bg-white/60">
+                    <div className="text-xs text-gray-500">كومبو</div>
+                    <div className="text-lg font-bold text-orange-600">+{result.comboBonus}</div>
+                  </div>
+                )}
+                {result.speedBonus !== undefined && result.speedBonus > 0 && (
+                  <div className="p-2 rounded-lg bg-white/60">
+                    <div className="text-xs text-gray-500">سرعة</div>
+                    <div className="text-lg font-bold text-teal-600">+{result.speedBonus}</div>
+                  </div>
+                )}
+                {result.accuracyBonus !== undefined && result.accuracyBonus > 0 && (
+                  <div className="p-2 rounded-lg bg-white/60">
+                    <div className="text-xs text-gray-500">دقة</div>
+                    <div className="text-lg font-bold text-emerald-600">+{result.accuracyBonus}</div>
+                  </div>
+                )}
+                {result.difficultyMultiplier !== undefined && result.difficultyMultiplier > 1 && (
+                  <div className="p-2 rounded-lg bg-white/60 col-span-2">
+                    <div className="text-xs text-gray-500">مضاعف الصعوبة</div>
+                    <div className="text-lg font-bold text-purple-600">×{result.difficultyMultiplier}</div>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
 
           {/* Rewards */}
           <Card className="p-4 bg-gradient-to-l from-yellow-50 to-white border-yellow-300 shadow-md relative overflow-hidden">

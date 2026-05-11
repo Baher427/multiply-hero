@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '@/stores/app-store';
 import { useGameStore } from '@/stores/game-store';
+import { calculateScore, getAccuracyPercentage, calculateAvgResponseTime, getPlayerTitle } from '@/lib/game-engine/scoring-engine';
+import type { ScoringResult } from '@/lib/game-engine/scoring-engine';
 import { generateQuestions } from '@/lib/game-engine/question-generator';
 import { getRecommendedTable } from '@/lib/game-engine/adaptive-engine';
 import { AVATARS, BADGE_DEFINITIONS } from '@/lib/game-engine/constants';
@@ -34,6 +36,7 @@ import LeaderboardPage from '@/components/leaderboard/LeaderboardPage';
 import ShopPage from '@/components/shop/ShopPage';
 import PracticeMode from '@/components/practice/PracticeMode';
 import SpeedTestPage from '@/components/speedtest/SpeedTestPage';
+import AuthGuard from '@/components/auth/AuthGuard';
 
 const AVATAR_MAP: Record<string, string> = {
   lion: '🦁', cat: '🐱', bear: '🐻', rabbit: '🐰', elephant: '🐘',
@@ -44,7 +47,7 @@ const AVATAR_MAP: Record<string, string> = {
   rocket: '🚀', crown: '👑', gem: '💎', trophy: '🏆', rainbow: '🌈', balloon: '🎈',
 };
 
-// Views that require authentication
+// Views that require authentication (ALL protected views including admin and parent)
 const AUTH_REQUIRED_VIEWS: AppView[] = [
   'dashboard',
   'game-select',
@@ -54,6 +57,8 @@ const AUTH_REQUIRED_VIEWS: AppView[] = [
   'achievements',
   'daily-challenge',
   'story-mode',
+  'admin',
+  'parent',
   'settings',
   'leaderboard',
   'shop',
@@ -80,6 +85,11 @@ export default function Home() {
     musicEnabled,
     toggleSound,
     toggleMusic,
+    restoreAuth,
+    checkSession,
+    updateActivity,
+    isSessionValid,
+    persistAuth,
   } = useAppStore();
 
   const { resetGame } = useGameStore();
@@ -89,12 +99,14 @@ export default function Home() {
   const [earnedBadges, setEarnedBadges] = useState<Array<{ badgeType: string; earnedAt: string }>>([]);
   const [gameQuestions, setGameQuestions] = useState<Question[]>([]);
   const [gameResult, setGameResult] = useState<any>(null);
+  const [levelUpAnimation, setLevelUpAnimation] = useState<{ show: boolean; newLevel: number; title: string }>({ show: false, newLevel: 0, title: '' });
   const [gameConfig, setGameConfig] = useState<GameConfig | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [coachMessage, setCoachMessage] = useState<{ show: boolean; type: 'encouragement' | 'hint' | 'celebration' | 'comfort' | 'guidance' }>({
     show: false,
     type: 'encouragement',
   });
+  const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'pending' | 'error'>('synced');
 
   // Handler for updating child profile from settings
   const handleUpdateProfile = async (updates: Partial<{ displayName: string; avatarId: string; favoriteColor: string }>) => {
@@ -234,34 +246,80 @@ export default function Home() {
     setGameConfig(null);
   };
 
-  // Save game session
+  // Save game session with retry logic
   const saveGameSession = async (result: any) => {
     if (!selectedChild || !gameConfig) return;
     
+    setSyncStatus('syncing');
+    
+    // Local backup before save
     try {
-      // Save game session
-      await fetch('/api/game-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          childId: selectedChild.id,
-          gameType: gameConfig.gameType,
-          tableNumber: gameConfig.tableNumber === 'mixed' ? 0 : gameConfig.tableNumber,
-          score: result.score,
-          correctCount: result.correctCount,
-          wrongCount: result.wrongCount,
-          duration: result.duration,
-          bestCombo: result.bestCombo,
-        }),
-      });
+      const backupData = {
+        childId: selectedChild.id,
+        gameConfig,
+        result,
+        timestamp: Date.now(),
+      };
+      localStorage.setItem(`mh_backup_${selectedChild.id}`, JSON.stringify(backupData));
+    } catch { /* ignore */ }
+
+    try {
+      // Save game session with retry
+      let sessionSuccess = false;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const sessionRes = await fetch('/api/game-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              childId: selectedChild.id,
+              gameType: gameConfig.gameType,
+              tableNumber: gameConfig.tableNumber === 'mixed' ? 0 : gameConfig.tableNumber,
+              score: result.score,
+              correctCount: result.correctCount,
+              wrongCount: result.wrongCount,
+              duration: result.duration,
+              bestCombo: result.bestCombo,
+              avgResponseTime: result.avgResponseTime,
+              responseTimes: result.responseTimes,
+              // Scoring engine fields
+              totalPoints: result.pointsEarned,
+              xpEarned: result.xpEarned,
+              coinsEarned: result.coinsEarned,
+              gemsEarned: result.gemsEarned,
+              starsEarned: result.starsEarned,
+              masteryChange: result.masteryChange,
+              newLevel: result.newLevel,
+              leveledUp: result.leveledUp,
+              performanceRating: result.performanceRating,
+              basePoints: result.basePoints,
+              comboBonus: result.comboBonus,
+              speedBonus: result.speedBonus,
+              accuracyBonus: result.accuracyBonus,
+              difficultyMultiplier: result.difficultyMultiplier,
+            }),
+          });
+          if (sessionRes.ok) {
+            sessionSuccess = true;
+            break;
+          }
+        } catch {
+          // Retry with exponential backoff
+          if (attempt < 2) {
+            await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 1000));
+          }
+        }
+      }
+
+      if (!sessionSuccess) {
+        setSyncStatus('error');
+      }
 
       // Update progress for affected tables
       const tables = gameConfig.tableNumber === 'mixed' 
         ? [1, 2, 3, 4, 5, 6, 7, 8, 9] 
         : [gameConfig.tableNumber];
       
-      // Note: For 'mixed' table mode, dividing correct/wrong counts equally across all tables
-      // is an approximation. This distributes fractional counts using Math.round.
       for (const t of tables) {
         await fetch('/api/progress', {
           method: 'PUT',
@@ -288,8 +346,16 @@ export default function Home() {
       if (childData.success) {
         setSelectedChild(childData.data.child);
       }
+
+      // Clear backup on success
+      try {
+        localStorage.removeItem(`mh_backup_${selectedChild.id}`);
+      } catch { /* ignore */ }
+
+      setSyncStatus('synced');
     } catch (error) {
       console.error('Failed to save game session:', error);
+      setSyncStatus('error');
     }
   };
 
@@ -299,30 +365,25 @@ export default function Home() {
     
     const badgesToCheck: string[] = [];
     
-    // First game badge
     if (result.correctCount + result.wrongCount > 0) {
       badgesToCheck.push('first-game');
     }
     
-    // Perfect game
     if (result.wrongCount === 0 && result.correctCount > 0) {
       badgesToCheck.push('perfect-game');
     }
     
-    // Combo badges
     if (result.bestCombo >= 5) badgesToCheck.push('combo-5');
     if (result.bestCombo >= 10) badgesToCheck.push('combo-10');
     if (result.bestCombo >= 25) badgesToCheck.push('combo-25');
     if (result.bestCombo >= 50) badgesToCheck.push('combo-50');
     
-    // Points badges
     const newPoints = (selectedChild.points || 0) + (result.pointsEarned || 0);
     if (newPoints >= 100) badgesToCheck.push('points-100');
     if (newPoints >= 500) badgesToCheck.push('points-500');
     if (newPoints >= 1000) badgesToCheck.push('points-1000');
     if (newPoints >= 5000) badgesToCheck.push('points-5000');
 
-    // Table mastery badges
     for (const prog of tableProgress) {
       if (prog.masteryLevel >= 0.8) {
         badgesToCheck.push(`table-master-${prog.tableNumber}`);
@@ -363,28 +424,59 @@ export default function Home() {
 
   // Handle game completion
   const handleGameComplete = (result: any) => {
-    // Calculate rewards based on game results
     const accuracy = result.correctCount + result.wrongCount > 0
       ? result.correctCount / (result.correctCount + result.wrongCount)
       : 0;
 
-    const pointsEarned = result.score || 0;
-    const starsEarned = accuracy >= 0.9 ? 3 : accuracy >= 0.7 ? 2 : accuracy >= 0.4 ? 1 : 0;
-    const coinsEarned = Math.round(result.correctCount * 5 + (result.bestCombo || 0) * 2);
-    const gemsEarned = accuracy === 1 ? 3 : accuracy >= 0.8 ? 1 : 0;
-
-    const enrichedResult = {
-      ...result,
-      pointsEarned,
-      starsEarned,
-      coinsEarned,
-      gemsEarned,
-    };
+    // Use scoring engine result if available
+    let enrichedResult: any;
+    if (result.scoringResult) {
+      // Scoring engine already calculated everything
+      const sr: ScoringResult = result.scoringResult;
+      enrichedResult = {
+        ...result,
+        pointsEarned: sr.totalPoints,
+        starsEarned: sr.starsEarned,
+        coinsEarned: sr.coinsEarned,
+        gemsEarned: sr.gemsEarned,
+        performanceRating: sr.performanceRating,
+        leveledUp: sr.leveledUp,
+        newLevel: sr.newLevel,
+        masteryChange: sr.masteryChange,
+        xpEarned: sr.xpEarned,
+        basePoints: sr.basePoints,
+        comboBonus: sr.comboBonus,
+        speedBonus: sr.speedBonus,
+        accuracyBonus: sr.accuracyBonus,
+        difficultyMultiplier: sr.difficultyMultiplier,
+      };
+    } else {
+      // Fallback for games that don't use scoring engine yet (e.g., speed test)
+      const pointsEarned = result.score || 0;
+      const starsEarned = accuracy >= 0.9 ? 3 : accuracy >= 0.7 ? 2 : accuracy >= 0.4 ? 1 : 0;
+      const coinsEarned = Math.round(result.correctCount * 5 + (result.bestCombo || 0) * 2);
+      const gemsEarned = accuracy === 1 ? 3 : accuracy >= 0.8 ? 1 : 0;
+      enrichedResult = {
+        ...result,
+        pointsEarned,
+        starsEarned,
+        coinsEarned,
+        gemsEarned,
+      };
+    }
 
     setGameResult(enrichedResult);
     saveGameSession(enrichedResult);
     navigate('game-results');
-    if (starsEarned === 3) {
+
+    // Show level-up animation if leveled up
+    if (enrichedResult.leveledUp && enrichedResult.newLevel) {
+      const title = getPlayerTitle(enrichedResult.newLevel);
+      setLevelUpAnimation({ show: true, newLevel: enrichedResult.newLevel, title: title.title });
+      setTimeout(() => setLevelUpAnimation(prev => ({ ...prev, show: false })), 4000);
+    }
+
+    if (enrichedResult.starsEarned === 3) {
       showCoach('celebration');
     }
   };
@@ -404,24 +496,106 @@ export default function Home() {
     setCoachMessage({ show: true, type });
   };
 
-  // Initial data fetch
+  // ─── Session Restore on Mount ───
   useEffect(() => {
-    fetchChildren();
-  }, [fetchChildren]);
+    const restored = restoreAuth();
+    if (restored) {
+      fetchChildren();
+    } else {
+      fetchChildren();
+    }
+  }, [fetchChildren, restoreAuth]);
 
-  // Refresh data when navigating to dashboard
+  // ─── Restore selected child data after auth restore ───
+  useEffect(() => {
+    const state = useAppStore.getState();
+    if (state.isAuthenticated && state.currentChildId && !selectedChild) {
+      // Restore child data
+      fetch(`/api/children/${state.currentChildId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setSelectedChild(data.data.child);
+            fetchChildData(state.currentChildId!);
+          }
+        })
+        .catch(() => { /* ignore */ });
+    }
+  }, []); // Run once on mount
+
+  // ─── Refresh data when navigating to dashboard ───
   useEffect(() => {
     if (currentView === 'dashboard' && selectedChild) {
       fetchChildData(selectedChild.id);
     }
   }, [currentView, selectedChild, fetchChildData]);
 
-  // Authentication guard: redirect to landing if not authenticated for protected views
+  // ─── Authentication guard: redirect to landing if not authenticated for protected views ───
   useEffect(() => {
     if (AUTH_REQUIRED_VIEWS.includes(currentView) && !isAuthenticated) {
-      navigate('landing');
+      // Special case: admin should require secret code (handled within AdminDashboard)
+      // Parent should require selecting a child first
+      if (currentView === 'admin' || currentView === 'parent') {
+        navigate('landing');
+      } else {
+        navigate('landing');
+      }
     }
   }, [currentView, isAuthenticated, navigate]);
+
+  // ─── Inactivity Timer (auto-logout after 30 min) ───
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    // Activity tracking events
+    const activityEvents = ['mousedown', 'keydown', 'touchstart', 'scroll', 'click'];
+    
+    const handleActivity = () => {
+      updateActivity();
+      // Extend session on activity
+      persistAuth();
+    };
+
+    for (const event of activityEvents) {
+      window.addEventListener(event, handleActivity, { passive: true });
+    }
+
+    // Check session every minute
+    const sessionCheck = setInterval(() => {
+      if (!checkSession()) {
+        // Session expired - will show AuthGuard overlay
+        handleLogout();
+      }
+    }, 60000);
+
+    return () => {
+      for (const event of activityEvents) {
+        window.removeEventListener(event, handleActivity);
+      }
+      clearInterval(sessionCheck);
+    };
+  }, [isAuthenticated, updateActivity, persistAuth, checkSession]);
+
+  // ─── Auto-save game state periodically ───
+  useEffect(() => {
+    if (!isAuthenticated || !selectedChild) return;
+    
+    const autoSaveInterval = setInterval(() => {
+      if (selectedChild) {
+        // Save current state to localStorage as backup
+        try {
+          const stateBackup = {
+            childId: selectedChild.id,
+            view: currentView,
+            timestamp: Date.now(),
+          };
+          localStorage.setItem('mh_autosave', JSON.stringify(stateBackup));
+        } catch { /* ignore */ }
+      }
+    }, 30000); // Every 30 seconds
+
+    return () => clearInterval(autoSaveInterval);
+  }, [isAuthenticated, selectedChild, currentView]);
 
   // Get recommended table
   const recommendedTable = tableProgress.length > 0 ? getRecommendedTable(tableProgress) : 1;
@@ -433,7 +607,6 @@ export default function Home() {
         return (
           <LandingPage
             onStart={() => {
-              // Always go to login page first
               navigate('login');
             }}
             onAdmin={() => {
@@ -441,8 +614,13 @@ export default function Home() {
               navigate('admin');
             }}
             onParent={() => {
-              setParentMode(true);
-              navigate('parent');
+              // Parent access should require selecting a child first
+              if (selectedChild && isAuthenticated) {
+                setParentMode(true);
+                navigate('parent');
+              } else {
+                navigate('login');
+              }
             }}
           />
         );
@@ -683,7 +861,6 @@ export default function Home() {
           <SpeedTestPage
             onBack={() => navigate('dashboard')}
             onComplete={(result) => {
-              // Save the speed test result as a game session
               const enrichedResult = {
                 ...result,
                 pointsEarned: result.score,
@@ -692,7 +869,6 @@ export default function Home() {
                 gemsEarned: 0,
               };
               setGameResult(enrichedResult);
-              // Set a game config for the speed test so saveGameSession works
               const speedTestConfig: GameConfig = {
                 gameType: 'multiple-choice' as any,
                 tableNumber: 'mixed',
@@ -700,9 +876,7 @@ export default function Home() {
                 difficulty: 'medium',
               };
               setGameConfig(speedTestConfig);
-              // Save to database if child is selected
               if (selectedChild) {
-                // Need to set config first then save on next tick
                 setTimeout(() => saveGameSession(enrichedResult), 0);
               }
               navigate('game-results');
@@ -711,6 +885,8 @@ export default function Home() {
         ) : null;
 
       case 'admin':
+        // Admin access is ONLY via secret code entry (hidden from UI)
+        // The AdminDashboard component handles its own PIN gate
         return (
           <AdminDashboard
             onBack={() => {
@@ -721,7 +897,8 @@ export default function Home() {
         );
 
       case 'parent':
-        return selectedChild ? (
+        // Parent access requires selecting a child first
+        return selectedChild && isAuthenticated ? (
           <ParentDashboard
             childId={selectedChild.id}
             onBack={() => {
@@ -745,21 +922,102 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen">
-      <SoundToggle />
-      <motion.div
-        key={currentView}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.3 }}
-      >
-        {renderView()}
-      </motion.div>
-      <AICoach
-        type={coachMessage.type}
-        show={coachMessage.show}
-        onHide={() => setCoachMessage(prev => ({ ...prev, show: false }))}
-      />
-    </main>
+    <AuthGuard>
+      <main className="min-h-screen">
+        <SoundToggle />
+
+        {/* Level-up animation overlay */}
+        <AnimatePresence>
+          {levelUpAnimation.show && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+              onClick={() => setLevelUpAnimation(prev => ({ ...prev, show: false }))}
+            >
+              <motion.div
+                initial={{ scale: 0, rotate: -30 }}
+                animate={{ scale: 1, rotate: 0 }}
+                exit={{ scale: 0, rotate: 30 }}
+                transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+                className="text-center bg-gradient-to-br from-amber-400 via-yellow-400 to-orange-400 rounded-3xl p-8 shadow-2xl border-4 border-white/30 max-w-sm mx-4"
+              >
+                <motion.div
+                  animate={{ scale: [1, 1.3, 1], rotate: [0, 10, -10, 0] }}
+                  transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut' }}
+                  className="text-7xl mb-4"
+                >
+                  🎉
+                </motion.div>
+                <h2 className="text-3xl font-black text-white mb-2">ارتقيت مستوى!</h2>
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.3, type: 'spring' }}
+                  className="text-6xl font-black text-white mb-2"
+                >
+                  {levelUpAnimation.newLevel}
+                </motion.div>
+                <motion.p
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                  className="text-lg font-bold text-white/90"
+                >
+                  {levelUpAnimation.title}
+                </motion.p>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.8 }}
+                  className="mt-4 flex justify-center gap-2"
+                >
+                  {['⭐', '✨', '🌟'].map((e, i) => (
+                    <motion.span
+                      key={i}
+                      className="text-2xl"
+                      animate={{ y: [0, -10, 0], rotate: [0, 15, -15, 0] }}
+                      transition={{ delay: 1 + i * 0.15, duration: 0.8, repeat: 2 }}
+                    >
+                      {e}
+                    </motion.span>
+                  ))}
+                </motion.div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        {/* Sync status indicator */}
+        {isAuthenticated && (
+          <div className="fixed top-2 left-2 z-50">
+            <div className={`w-2 h-2 rounded-full ${
+              syncStatus === 'synced' ? 'bg-green-400' :
+              syncStatus === 'syncing' ? 'bg-amber-400 animate-pulse' :
+              syncStatus === 'error' ? 'bg-red-400' :
+              'bg-gray-400'
+            }`} title={
+              syncStatus === 'synced' ? 'تم الحفظ' :
+              syncStatus === 'syncing' ? 'جاري الحفظ...' :
+              syncStatus === 'error' ? 'خطأ في الحفظ' :
+              'في الانتظار'
+            } />
+          </div>
+        )}
+        <motion.div
+          key={currentView}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+        >
+          {renderView()}
+        </motion.div>
+        <AICoach
+          type={coachMessage.type}
+          show={coachMessage.show}
+          onHide={() => setCoachMessage(prev => ({ ...prev, show: false }))}
+        />
+      </main>
+    </AuthGuard>
   );
 }

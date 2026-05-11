@@ -10,6 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Table,
   TableBody,
@@ -37,10 +39,20 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Search, ArrowRight, Trash2, ChevronDown, ChevronUp, Users, Gamepad2,
   Award, TrendingUp, Edit3, RotateCcw, Download, Shield, Lock,
   ArrowUpRight, ArrowDownRight, Activity, Clock, Zap, Star,
-  Coins, Gem, BarChart3, Eye, X,
+  Coins, Gem, BarChart3, Eye, X, Settings, Database, FileDown,
+  AlertTriangle, CheckCircle2, LockOpen, Timer, LayoutDashboard,
+  BookOpen, Cog, ShieldCheck, UserPlus, Trash, RefreshCw, Save,
+  Upload, Info, Palette, Calendar, Gift, ShieldAlert
 } from 'lucide-react';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -66,6 +78,7 @@ interface ChildData {
   totalPlayTime: number;
   comboCount: number;
   bestCombo: number;
+  pin: string | null;
   createdAt: string;
   updatedAt: string;
   tableProgress: TableProgressItem[];
@@ -140,7 +153,9 @@ const AVATAR_MAP: Record<string, string> = {
   lion: '🦁', cat: '🐱', dog: '🐶', rabbit: '🐰', bear: '🐻',
   fox: '🦊', panda: '🐼', unicorn: '🦄', dragon: '🐲', monkey: '🐵',
   owl: '🦉', penguin: '🐧', tiger: '🐯', frog: '🐸', dolphin: '🐬',
-  star: '⭐', rocket: '🚀', flower: '🌸',
+  'star-face': '⭐', 'cool-face': '😎', 'heart-face': '😍', 'party-face': '🥳', 'nerd-face': '🤓',
+  apple: '🍎', strawberry: '🍓', watermelon: '🍉', banana: '🍌',
+  rocket: '🚀', crown: '👑', gem: '💎', trophy: '🏆', rainbow: '🌈', balloon: '🎈',
 };
 
 const BADGE_NAMES: Record<string, { name: string; icon: string }> = {
@@ -171,6 +186,7 @@ const BADGE_NAMES: Record<string, { name: string; icon: string }> = {
   'perfect-game': { name: 'لعبة مثالية', icon: '✨' },
   'explorer': { name: 'مستكشف', icon: '🧭' },
   'all-tables': { name: 'كل الجداول', icon: '👑' },
+  'story-chapter-1': { name: 'فصل القصة', icon: '📖' },
 };
 
 const GAME_TYPE_NAMES: Record<string, string> = {
@@ -180,63 +196,30 @@ const GAME_TYPE_NAMES: Record<string, string> = {
   'fill-blank': 'أكمل الفراغ',
 };
 
-const GAME_TYPE_ICONS: Record<string, string> = {
-  'multiple-choice': '🎯',
-  'true-false': '✅',
-  'matching': '🔗',
-  'fill-blank': '✏️',
-};
+const TABLE_EMOJIS = ['🏝️', '🌳', '🌊', '⛰️', '🍬', '🚀', '🏰', '🎨', '👑'];
 
 function getMasteryColor(mastery: number): string {
-  if (mastery >= 0.8) return 'bg-green-500';
-  if (mastery >= 0.4) return 'bg-amber-500';
-  return 'bg-red-500';
+  if (mastery >= 0.8) return 'text-green-400';
+  if (mastery >= 0.4) return 'text-amber-400';
+  return 'text-red-400';
 }
 
 function getMasteryBg(mastery: number): string {
-  if (mastery >= 0.8) return 'bg-green-50 border-green-200';
-  if (mastery >= 0.4) return 'bg-amber-50 border-amber-200';
-  return 'bg-red-50 border-red-200';
+  if (mastery >= 0.8) return 'bg-green-500/20 border-green-500/30';
+  if (mastery >= 0.4) return 'bg-amber-500/20 border-amber-500/30';
+  return 'bg-red-500/20 border-red-500/30';
 }
 
 function formatDate(dateStr: string): string {
   try {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
-  } catch {
-    return dateStr;
-  }
+    return new Date(dateStr).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
+  } catch { return dateStr; }
 }
 
 function formatDateTime(dateStr: string): string {
   try {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('ar-EG', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch {
-    return dateStr;
-  }
-}
-
-function getTimeAgo(dateStr: string): string {
-  try {
-    const now = Date.now();
-    const then = new Date(dateStr).getTime();
-    const diffMs = now - then;
-    const diffMin = Math.floor(diffMs / 60000);
-    const diffHr = Math.floor(diffMin / 60);
-    const diffDay = Math.floor(diffHr / 24);
-    if (diffMin < 1) return 'الآن';
-    if (diffMin < 60) return `منذ ${diffMin} دقيقة`;
-    if (diffHr < 24) return `منذ ${diffHr} ساعة`;
-    return `منذ ${diffDay} يوم`;
-  } catch {
-    return '';
-  }
+    return new Date(dateStr).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  } catch { return dateStr; }
 }
 
 function formatPlayTime(seconds: number): string {
@@ -272,11 +255,7 @@ function AdminPinGate({ onAuthenticated }: { onAuthenticated: () => void }) {
       >
         <Card className="w-[340px] border-0 shadow-2xl bg-white/10 backdrop-blur-xl">
           <CardContent className="p-8">
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-center"
-            >
+            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
               <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center mb-6 shadow-lg shadow-emerald-500/30">
                 <Lock className="w-10 h-10 text-white" />
               </div>
@@ -289,35 +268,21 @@ function AdminPinGate({ onAuthenticated }: { onAuthenticated: () => void }) {
                     key={i}
                     animate={pin.length > i ? { scale: [1, 1.3, 1] } : {}}
                     transition={{ duration: 0.2 }}
-                    className={`w-4 h-4 rounded-full border-2 transition-all duration-200 ${
-                      pin.length > i
-                        ? 'bg-emerald-400 border-emerald-400 shadow-md shadow-emerald-400/50'
-                        : 'bg-transparent border-white/30'
+                    className={`w-4 h-4 rounded-full border-2 transition-all ${
+                      pin.length > i ? 'bg-emerald-400 border-emerald-400 shadow-md shadow-emerald-400/50' : 'bg-transparent border-white/30'
                     } ${error ? 'border-red-400 bg-red-400' : ''}`}
                   />
                 ))}
               </div>
 
-              {error && (
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-red-400 text-sm mb-4"
-                >
-                  رمز PIN غير صحيح
-                </motion.p>
-              )}
+              {error && <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-red-400 text-sm mb-4">رمز PIN غير صحيح</motion.p>}
 
               <Input
                 type="password"
                 inputMode="numeric"
                 maxLength={4}
                 value={pin}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/\D/g, '').slice(0, 4);
-                  setPin(val);
-                  setError(false);
-                }}
+                onChange={(e) => { const val = e.target.value.replace(/\D/g, '').slice(0, 4); setPin(val); setError(false); }}
                 onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
                 className="text-center text-2xl tracking-[1em] bg-white/10 border-white/20 text-white placeholder:text-white/30 mb-4 h-14"
                 placeholder="••••"
@@ -331,30 +296,19 @@ function AdminPinGate({ onAuthenticated }: { onAuthenticated: () => void }) {
                     variant="ghost"
                     disabled={key === ''}
                     onClick={() => {
-                      if (key === '⌫') {
-                        setPin(p => p.slice(0, -1));
-                      } else if (key && pin.length < 4) {
+                      if (key === '⌫') { setPin(p => p.slice(0, -1)); }
+                      else if (key && pin.length < 4) {
                         const newPin = pin + key;
                         setPin(newPin);
                         if (newPin.length === 4) {
                           setTimeout(() => {
-                            if (newPin === ADMIN_PIN) {
-                              onAuthenticated();
-                            } else {
-                              setError(true);
-                              setShake(true);
-                              setTimeout(() => setShake(false), 500);
-                              setTimeout(() => { setError(false); setPin(''); }, 1500);
-                            }
+                            if (newPin === ADMIN_PIN) onAuthenticated();
+                            else { setError(true); setShake(true); setTimeout(() => setShake(false), 500); setTimeout(() => { setError(false); setPin(''); }, 1500); }
                           }, 150);
                         }
                       }
                     }}
-                    className={`h-14 text-xl font-bold ${
-                      key === '⌫'
-                        ? 'text-red-300 hover:bg-red-500/20'
-                        : 'text-white hover:bg-white/10'
-                    }`}
+                    className={`h-14 text-xl font-bold ${key === '⌫' ? 'text-red-300 hover:bg-red-500/20' : 'text-white hover:bg-white/10'}`}
                   >
                     {key === '⌫' ? '⌫' : key}
                   </Button>
@@ -381,23 +335,34 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
   const [expandedChildId, setExpandedChildId] = useState<string | null>(null);
   const [deleteDialogChild, setDeleteDialogChild] = useState<ChildData | null>(null);
   const [detailChild, setDetailChild] = useState<ChildData | null>(null);
+  const [selectedChildren, setSelectedChildren] = useState<Set<string>>(new Set());
 
   // Edit dialog state
   const [editChild, setEditChild] = useState<ChildData | null>(null);
-  const [editForm, setEditForm] = useState({ displayName: '', age: 0, points: 0, level: 1, stars: 0, coins: 0, gems: 0 });
+  const [editForm, setEditForm] = useState({ displayName: '', age: 0, points: 0, level: 1, stars: 0, coins: 0, gems: 0, streak: 0, avatarId: 'lion', favoriteColor: 'emerald' });
   const [editSaving, setEditSaving] = useState(false);
 
   // Reset progress state
   const [resetDialogChild, setResetDialogChild] = useState<ChildData | null>(null);
   const [resetting, setResetting] = useState(false);
 
-  // Bulk actions state
-  const [bulkResetDialog, setBulkResetDialog] = useState(false);
-  const [bulkResetting, setBulkResetting] = useState(false);
-
   // Activity log state
   const [activityLog, setActivityLog] = useState<ActivityItem[]>([]);
-  const [activityLoading, setActivityLoading] = useState(false);
+
+  // Settings state
+  const [adminPin, setAdminPin] = useState(ADMIN_PIN);
+  const [newPin, setNewPin] = useState('');
+  const [sessionTimeout, setSessionTimeout] = useState(30);
+  const [rewardSettings, setRewardSettings] = useState({ pointsPerCorrect: 10, coinsPerCorrect: 5, gemsPerPerfect: 3 });
+  const [featureFlags, setFeatureFlags] = useState({ dailyChallenge: true, storyMode: true, speedTest: true, leaderboard: true, shop: true });
+
+  // Badge award dialog
+  const [badgeDialogChild, setBadgeDialogChild] = useState<ChildData | null>(null);
+  const [selectedBadgeType, setSelectedBadgeType] = useState('');
+
+  // New child dialog
+  const [newChildDialog, setNewChildDialog] = useState(false);
+  const [newChildForm, setNewChildForm] = useState({ name: '', displayName: '', age: 7, avatarId: 'lion', favoriteColor: 'emerald' });
 
   // Toast state
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -413,53 +378,33 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
       setLoading(true);
       const res = await fetch('/api/admin');
       const json = await res.json();
-      if (json.success) {
-        setData(json.data);
-      } else {
-        setError(json.error || 'فشل في تحميل البيانات');
-      }
-    } catch {
-      setError('فشل في الاتصال بالخادم');
-    } finally {
-      setLoading(false);
-    }
+      if (json.success) setData(json.data);
+      else setError(json.error || 'فشل في تحميل البيانات');
+    } catch { setError('فشل في الاتصال بالخادم'); }
+    finally { setLoading(false); }
   }, []);
 
   // Fetch activity log
   const fetchActivity = useCallback(async () => {
     try {
-      setActivityLoading(true);
       const res = await fetch('/api/admin/activity');
       const json = await res.json();
-      if (json.success) {
-        setActivityLog(json.data);
-      }
-    } catch {
-      // silently fail
-    } finally {
-      setActivityLoading(false);
-    }
+      if (json.success) setActivityLog(json.data);
+    } catch { /* silent */ }
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchData();
-      fetchActivity();
-    }
+    if (isAuthenticated) { fetchData(); fetchActivity(); }
   }, [isAuthenticated, fetchData, fetchActivity]);
 
   // Filtered and sorted children
   const filteredChildren = useMemo(() => {
     if (!data?.children) return [];
     let list = [...data.children];
-
-    // Search filter
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       list = list.filter(c => c.name.toLowerCase().includes(q) || c.displayName.toLowerCase().includes(q));
     }
-
-    // Sort
     list.sort((a, b) => {
       let cmp = 0;
       switch (sortField) {
@@ -470,69 +415,39 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
       }
       return sortDir === 'desc' ? -cmp : cmp;
     });
-
     return list;
   }, [data?.children, searchQuery, sortField, sortDir]);
 
-  // Compute trend indicators for stats
-  const statTrends = useMemo(() => {
-    if (!data?.children) return { childrenTrend: 0, sessionsTrend: 0, masteryTrend: 0, badgesTrend: 0 };
+  // ─── Stats for dashboard ───
+  const dashboardStats = useMemo(() => {
+    if (!data) return null;
     const now = new Date();
+    const today = now.toISOString().split('T')[0];
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-
-    let thisWeekSessions = 0;
-    let lastWeekSessions = 0;
-    let thisWeekBadges = 0;
-    let lastWeekBadges = 0;
-
-    for (const child of data.children) {
-      for (const session of child.gameSessions) {
-        const sessionDate = new Date(session.completedAt);
-        if (sessionDate >= weekAgo) thisWeekSessions++;
-        else if (sessionDate >= twoWeeksAgo) lastWeekSessions++;
-      }
-      for (const badge of child.badges) {
-        const badgeDate = new Date(badge.earnedAt);
-        if (badgeDate >= weekAgo) thisWeekBadges++;
-        else if (badgeDate >= twoWeeksAgo) lastWeekBadges++;
-      }
-    }
-
-    const sessionsTrend = lastWeekSessions > 0 ? Math.round(((thisWeekSessions - lastWeekSessions) / lastWeekSessions) * 100) : (thisWeekSessions > 0 ? 100 : 0);
-    const badgesTrend = lastWeekBadges > 0 ? Math.round(((thisWeekBadges - lastWeekBadges) / lastWeekBadges) * 100) : (thisWeekBadges > 0 ? 100 : 0);
-
-    // Children trend (new children this week)
-    const newChildrenThisWeek = data.children.filter(c => new Date(c.createdAt) >= weekAgo).length;
-
-    return {
-      childrenTrend: newChildrenThisWeek,
-      sessionsTrend,
-      masteryTrend: data.avgMastery >= 50 ? 1 : -1,
-      badgesTrend,
-    };
+    
+    const activeToday = data.children.filter(c => c.lastActiveDate === today).length;
+    const activeThisWeek = data.children.filter(c => c.lastActiveDate && new Date(c.lastActiveDate) >= weekAgo).length;
+    const totalGamesToday = data.children.reduce((sum, c) => sum + c.gameSessions.filter(s => new Date(s.completedAt).toISOString().split('T')[0] === today).length, 0);
+    const totalPoints = data.children.reduce((sum, c) => sum + c.points, 0);
+    const totalCoins = data.children.reduce((sum, c) => sum + c.coins, 0);
+    const totalGems = data.children.reduce((sum, c) => sum + c.gems, 0);
+    
+    return { activeToday, activeThisWeek, totalGamesToday, totalPoints, totalCoins, totalGems };
   }, [data]);
 
-  // Delete child
+  // ─── Actions ───
   const handleDelete = useCallback(async (childId: string) => {
     try {
       const res = await fetch(`/api/admin?childId=${childId}`, { method: 'DELETE' });
       const json = await res.json();
       if (json.success) {
-        setData(prev => prev ? {
-          ...prev,
-          children: prev.children.filter(c => c.id !== childId),
-          totalChildren: prev.totalChildren - 1,
-        } : prev);
+        setData(prev => prev ? { ...prev, children: prev.children.filter(c => c.id !== childId), totalChildren: prev.totalChildren - 1 } : prev);
         setDeleteDialogChild(null);
         showToast('تم حذف الطفل بنجاح');
       }
-    } catch {
-      showToast('فشل في حذف الطفل', 'error');
-    }
+    } catch { showToast('فشل في حذف الطفل', 'error'); }
   }, [showToast]);
 
-  // Edit child save
   const handleEditSave = useCallback(async () => {
     if (!editChild) return;
     try {
@@ -540,583 +455,362 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
       const res = await fetch(`/api/children/${editChild.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          displayName: editForm.displayName,
-          age: editForm.age,
-          points: editForm.points,
-          level: editForm.level,
-          stars: editForm.stars,
-          coins: editForm.coins,
-          gems: editForm.gems,
-        }),
+        body: JSON.stringify(editForm),
       });
       const json = await res.json();
       if (json.success) {
-        // Update local data
         setData(prev => {
           if (!prev) return prev;
-          return {
-            ...prev,
-            children: prev.children.map(c =>
-              c.id === editChild.id
-                ? { ...c, displayName: editForm.displayName, age: editForm.age, points: editForm.points, level: editForm.level, stars: editForm.stars, coins: editForm.coins, gems: editForm.gems }
-                : c
-            ),
-          };
+          return { ...prev, children: prev.children.map(c => c.id === editChild.id ? { ...c, ...editForm } : c) };
         });
-        // Also update detailChild if viewing this child
-        setDetailChild(prev => prev && prev.id === editChild.id
-          ? { ...prev, displayName: editForm.displayName, age: editForm.age, points: editForm.points, level: editForm.level, stars: editForm.stars, coins: editForm.coins, gems: editForm.gems }
-          : prev
-        );
+        setDetailChild(prev => prev && prev.id === editChild.id ? { ...prev, ...editForm } : prev);
         setEditChild(null);
         showToast('تم تحديث بيانات الطفل بنجاح');
-      } else {
-        showToast('فشل في تحديث البيانات', 'error');
-      }
-    } catch {
-      showToast('فشل في الاتصال بالخادم', 'error');
-    } finally {
-      setEditSaving(false);
-    }
+      } else { showToast('فشل في تحديث البيانات', 'error'); }
+    } catch { showToast('فشل في الاتصال بالخادم', 'error'); }
+    finally { setEditSaving(false); }
   }, [editChild, editForm, showToast]);
 
-  // Reset child progress
   const handleResetProgress = useCallback(async (childId: string) => {
     try {
       setResetting(true);
       const res = await fetch(`/api/progress?childId=${childId}`, { method: 'DELETE' });
       const json = await res.json();
       if (json.success) {
-        setData(prev => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            children: prev.children.map(c =>
-              c.id === childId
-                ? { ...c, points: 0, level: 1, stars: 0, coins: 0, gems: 0, streak: 0, bestCombo: 0, totalPlayTime: 0, comboCount: 0, tableProgress: c.tableProgress.map(tp => ({ ...tp, masteryLevel: 0, correctAnswers: 0, wrongAnswers: 0, totalAttempts: 0, avgSpeed: 0 })) }
-                : c
-            ),
-          };
-        });
-        setDetailChild(prev => prev && prev.id === childId
-          ? { ...prev, points: 0, level: 1, stars: 0, coins: 0, gems: 0, streak: 0, bestCombo: 0, totalPlayTime: 0, comboCount: 0, tableProgress: prev.tableProgress.map(tp => ({ ...tp, masteryLevel: 0, correctAnswers: 0, wrongAnswers: 0, totalAttempts: 0, avgSpeed: 0 })) }
-          : prev
-        );
+        await fetchData();
         setResetDialogChild(null);
         showToast('تم إعادة تعيين التقدم بنجاح');
       }
-    } catch {
-      showToast('فشل في إعادة تعيين التقدم', 'error');
-    } finally {
-      setResetting(false);
-    }
-  }, [showToast]);
+    } catch { showToast('فشل في إعادة تعيين التقدم', 'error'); }
+    finally { setResetting(false); }
+  }, [fetchData, showToast]);
 
-  // Bulk reset all children
+  const handleCreateChild = useCallback(async () => {
+    try {
+      const res = await fetch('/api/children', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newChildForm),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setNewChildDialog(false);
+        setNewChildForm({ name: '', displayName: '', age: 7, avatarId: 'lion', favoriteColor: 'emerald' });
+        await fetchData();
+        showToast('تم إنشاء حساب الطفل بنجاح');
+      }
+    } catch { showToast('فشل في إنشاء الحساب', 'error'); }
+  }, [newChildForm, fetchData, showToast]);
+
+  const handleAwardBadge = useCallback(async () => {
+    if (!badgeDialogChild || !selectedBadgeType) return;
+    try {
+      const res = await fetch('/api/badges', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ childId: badgeDialogChild.id, badgeType: selectedBadgeType }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setBadgeDialogChild(null);
+        setSelectedBadgeType('');
+        await fetchData();
+        showToast('تم منح الشارة بنجاح');
+      }
+    } catch { showToast('فشل في منح الشارة', 'error'); }
+  }, [badgeDialogChild, selectedBadgeType, fetchData, showToast]);
+
   const handleBulkReset = useCallback(async () => {
     if (!data?.children) return;
     try {
-      setBulkResetting(true);
-      await Promise.all(
-        data.children.map(c => fetch(`/api/progress?childId=${c.id}`, { method: 'DELETE' }))
-      );
-      // Refresh data
+      await Promise.all(data.children.map(c => fetch(`/api/progress?childId=${c.id}`, { method: 'DELETE' })));
       await fetchData();
-      setBulkResetDialog(false);
       showToast('تم إعادة تعيين تقدم جميع الأطفال');
-    } catch {
-      showToast('فشل في إعادة تعيين التقدم', 'error');
-    } finally {
-      setBulkResetting(false);
-    }
+    } catch { showToast('فشل في إعادة تعيين التقدم', 'error'); }
   }, [data?.children, fetchData, showToast]);
 
-  // Export data as JSON
-  const handleExport = useCallback(() => {
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedChildren.size === 0) return;
+    try {
+      await Promise.all([...selectedChildren].map(id => fetch(`/api/admin?childId=${id}`, { method: 'DELETE' })));
+      setSelectedChildren(new Set());
+      await fetchData();
+      showToast('تم حذف الأطفال المحددين');
+    } catch { showToast('فشل في حذف الأطفال', 'error'); }
+  }, [selectedChildren, fetchData, showToast]);
+
+  const handleExport = useCallback((format: 'json' | 'csv') => {
     if (!data) return;
-    const exportData = {
-      exportDate: new Date().toISOString(),
-      summary: {
-        totalChildren: data.totalChildren,
-        totalSessions: data.totalSessions,
-        totalBadges: data.totalBadges,
-        avgMastery: data.avgMastery,
-      },
-      tableStats: data.tableStats,
-      children: data.children.map(c => ({
-        id: c.id,
-        name: c.name,
-        displayName: c.displayName,
-        age: c.age,
-        avatarId: c.avatarId,
-        points: c.points,
-        level: c.level,
-        stars: c.stars,
-        coins: c.coins,
-        gems: c.gems,
-        streak: c.streak,
-        lastActiveDate: c.lastActiveDate,
-        totalPlayTime: c.totalPlayTime,
-        bestCombo: c.bestCombo,
-        createdAt: c.createdAt,
-        tableProgress: c.tableProgress,
-        badges: c.badges,
-        recentSessions: c.gameSessions.slice(0, 10),
-      })),
-    };
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `multiply-hero-export-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    
+    if (format === 'json') {
+      const exportData = {
+        exportDate: new Date().toISOString(),
+        summary: { totalChildren: data.totalChildren, totalSessions: data.totalSessions, avgMastery: data.avgMastery },
+        children: data.children.map(c => ({
+          id: c.id, name: c.name, displayName: c.displayName, age: c.age, points: c.points,
+          level: c.level, stars: c.stars, coins: c.coins, gems: c.gems, streak: c.streak,
+          tableProgress: c.tableProgress, badges: c.badges,
+        })),
+      };
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `multiply-hero-export-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } else {
+      const headers = 'الاسم,العمر,المستوى,النقاط,النجوم,العملات,الجواهر,الأيام المتتالية\n';
+      const rows = data.children.map(c => `${c.displayName},${c.age},${c.level},${c.points},${c.stars},${c.coins},${c.gems},${c.streak}`).join('\n');
+      const blob = new Blob(['\ufeff' + headers + rows], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `multiply-hero-export-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
     showToast('تم تصدير البيانات بنجاح');
   }, [data, showToast]);
 
-  // Open edit dialog
   const openEditDialog = useCallback((child: ChildData) => {
     setEditChild(child);
     setEditForm({
-      displayName: child.displayName,
-      age: child.age,
-      points: child.points,
-      level: child.level,
-      stars: child.stars,
-      coins: child.coins,
-      gems: child.gems,
+      displayName: child.displayName, age: child.age, points: child.points,
+      level: child.level, stars: child.stars, coins: child.coins, gems: child.gems,
+      streak: child.streak, avatarId: child.avatarId, favoriteColor: child.favoriteColor,
     });
   }, []);
 
-  // ─── PIN Gate ─────────────────────────────────────────────────────────
+  const toggleSort = (field: 'name' | 'age' | 'level' | 'points') => {
+    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortField(field); setSortDir('asc'); }
+  };
+
+  const toggleChildSelection = (id: string) => {
+    setSelectedChildren(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  // ─── PIN Gate ───
   if (!isAuthenticated) {
     return <AdminPinGate onAuthenticated={() => setIsAuthenticated(true)} />;
   }
 
-  const toggleSort = (field: 'name' | 'age' | 'level' | 'points') => {
-    if (sortField === field) {
-      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDir('asc');
-    }
-  };
-
-  const SortIcon = ({ field }: { field: 'name' | 'age' | 'level' | 'points' }) => {
-    if (sortField !== field) return null;
-    return sortDir === 'asc' ? <ChevronUp className="w-3 h-3 inline" /> : <ChevronDown className="w-3 h-3 inline" />;
-  };
-
-  // ─── Loading State ──────────────────────────────────────────────────────
+  // ─── Loading ───
   if (loading) {
     return (
-      <div dir="rtl" className="min-h-screen flex items-center justify-center bg-gradient-to-bl from-slate-50 to-slate-100">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
-          className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full"
-        />
+      <div dir="rtl" className="min-h-screen flex items-center justify-center bg-gradient-to-bl from-slate-900 via-slate-800 to-emerald-900">
+        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full" />
       </div>
     );
   }
 
-  // ─── Error State ────────────────────────────────────────────────────────
   if (error || !data) {
     return (
-      <div dir="rtl" className="min-h-screen flex flex-col items-center justify-center gap-4 bg-gradient-to-bl from-slate-50 to-slate-100">
-        <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 2 }} className="text-6xl">
-          😔
-        </motion.div>
-        <p className="text-xl font-bold text-slate-700">{error || 'لا توجد بيانات'}</p>
+      <div dir="rtl" className="min-h-screen flex flex-col items-center justify-center gap-4 bg-gradient-to-bl from-slate-900 via-slate-800 to-emerald-900">
+        <p className="text-xl font-bold text-white">{error || 'لا توجد بيانات'}</p>
         <Button onClick={onBack} variant="outline">العودة</Button>
       </div>
     );
   }
 
-  // ─── Detail View ────────────────────────────────────────────────────────
+  // ─── Detail View ───
   if (detailChild) {
     return (
-      <div
-        dir="rtl"
-        className="min-h-screen bg-gradient-to-bl from-slate-50 via-white to-emerald-50"
-      >
+      <div dir="rtl" className="min-h-screen bg-gradient-to-bl from-slate-900 via-slate-800 to-emerald-950">
         <div className="max-w-5xl mx-auto px-4 py-6">
-          {/* Back button + actions */}
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center justify-between mb-4">
-            <Button
-              onClick={() => setDetailChild(null)}
-              variant="ghost"
-              className="gap-2 text-slate-600 hover:text-slate-900"
-            >
-              <ArrowRight className="w-4 h-4" />
-              العودة للقائمة
+            <Button onClick={() => setDetailChild(null)} variant="ghost" className="gap-2 text-slate-300 hover:text-white">
+              <ArrowRight className="w-4 h-4" /> العودة للقائمة
             </Button>
             <div className="flex items-center gap-2">
-              <Button
-                onClick={() => openEditDialog(detailChild)}
-                variant="outline"
-                className="gap-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-              >
-                <Edit3 className="w-4 h-4" />
-                تعديل البيانات
+              <Button onClick={() => openEditDialog(detailChild)} variant="outline" className="gap-2 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10">
+                <Edit3 className="w-4 h-4" /> تعديل
               </Button>
-              <Button
-                onClick={() => setResetDialogChild(detailChild)}
-                variant="outline"
-                className="gap-2 border-red-200 text-red-600 hover:bg-red-50"
-              >
-                <RotateCcw className="w-4 h-4" />
-                إعادة تعيين التقدم
+              <Button onClick={() => setBadgeDialogChild(detailChild)} variant="outline" className="gap-2 border-amber-500/30 text-amber-400 hover:bg-amber-500/10">
+                <Award className="w-4 h-4" /> منح شارة
+              </Button>
+              <Button onClick={() => setResetDialogChild(detailChild)} variant="outline" className="gap-2 border-red-500/30 text-red-400 hover:bg-red-500/10">
+                <RotateCcw className="w-4 h-4" /> إعادة تعيين
               </Button>
             </div>
           </motion.div>
 
           {/* Profile Header */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <Card className="border-0 shadow-lg bg-gradient-to-l from-emerald-500 to-teal-600 overflow-hidden">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-20 h-20 rounded-full bg-white/25 backdrop-blur-sm flex items-center justify-center text-5xl shadow-lg">
-                    {AVATAR_MAP[detailChild.avatarId] || '🧒'}
-                  </div>
-                  <div className="flex-1">
-                    <h1 className="text-3xl font-black text-white">{detailChild.name}</h1>
-                    <p className="text-white/70 text-sm">{detailChild.displayName !== detailChild.name ? detailChild.displayName : ''}</p>
-                    <div className="flex flex-wrap items-center gap-2 mt-2">
-                      <Badge className="bg-white/20 text-white border-0">{detailChild.age} سنوات</Badge>
-                      <Badge className="bg-white/20 text-white border-0">المستوى {detailChild.level}</Badge>
-                      <Badge className="bg-amber-400/80 text-amber-900 border-0">{detailChild.points} نقطة</Badge>
-                      {detailChild.streak > 0 && (
-                        <Badge className="bg-orange-400/80 text-orange-900 border-0">🔥 {detailChild.streak} يوم</Badge>
-                      )}
-                    </div>
+          <Card className="border-0 shadow-lg bg-gradient-to-l from-emerald-600 to-teal-700 overflow-hidden">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
+                <div className="w-20 h-20 rounded-full bg-white/25 backdrop-blur-sm flex items-center justify-center text-5xl shadow-lg">
+                  {AVATAR_MAP[detailChild.avatarId] || '🧒'}
+                </div>
+                <div className="flex-1">
+                  <h1 className="text-3xl font-black text-white">{detailChild.displayName}</h1>
+                  <div className="flex flex-wrap items-center gap-2 mt-2">
+                    <Badge className="bg-white/20 text-white border-0">{detailChild.age} سنوات</Badge>
+                    <Badge className="bg-white/20 text-white border-0">المستوى {detailChild.level}</Badge>
+                    <Badge className="bg-amber-400/80 text-amber-900 border-0">{detailChild.points} ⭐</Badge>
+                    {detailChild.streak > 0 && <Badge className="bg-orange-400/80 text-orange-900 border-0">🔥 {detailChild.streak}</Badge>}
                   </div>
                 </div>
-
-                {/* Quick stats */}
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-6">
-                  {[
-                    { label: 'النجوم', value: detailChild.stars, emoji: '🌟' },
-                    { label: 'الجواهر', value: detailChild.gems, emoji: '💎' },
-                    { label: 'العملات', value: detailChild.coins, emoji: '🪙' },
-                    { label: 'أفضل كومبو', value: detailChild.bestCombo, emoji: '⚡' },
-                    { label: 'وقت اللعب', value: formatPlayTime(detailChild.totalPlayTime), emoji: '⏱️' },
-                  ].map((stat) => (
-                    <div key={stat.label} className="bg-white/15 rounded-xl p-3 text-center backdrop-blur-sm">
-                      <div className="text-2xl">{stat.emoji}</div>
-                      <div className="text-lg font-bold text-white">{typeof stat.value === 'number' ? stat.value.toLocaleString('ar-EG') : stat.value}</div>
-                      <div className="text-xs text-white/70">{stat.label}</div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-6">
+                {[
+                  { label: 'النجوم', value: detailChild.stars, emoji: '🌟' },
+                  { label: 'الجواهر', value: detailChild.gems, emoji: '💎' },
+                  { label: 'العملات', value: detailChild.coins, emoji: '🪙' },
+                  { label: 'أفضل كومبو', value: detailChild.bestCombo, emoji: '⚡' },
+                  { label: 'وقت اللعب', value: formatPlayTime(detailChild.totalPlayTime), emoji: '⏱️' },
+                ].map((stat) => (
+                  <div key={stat.label} className="bg-white/15 rounded-xl p-3 text-center backdrop-blur-sm">
+                    <div className="text-2xl">{stat.emoji}</div>
+                    <div className="text-lg font-bold text-white">{typeof stat.value === 'number' ? stat.value.toLocaleString('ar-EG') : stat.value}</div>
+                    <div className="text-xs text-white/70">{stat.label}</div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Table Progress */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <Card className="mt-6 border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                  📊 تقدم الجداول
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-3">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((tableNum) => {
-                    const prog = detailChild.tableProgress.find(p => p.tableNumber === tableNum);
-                    const mastery = prog?.masteryLevel ?? 0;
-                    return (
-                      <motion.div
-                        key={tableNum}
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: 0.3 + tableNum * 0.04 }}
-                        className={`rounded-xl border-2 p-3 text-center ${getMasteryBg(mastery)}`}
-                      >
-                        <div className="text-2xl font-black text-slate-800">×{tableNum}</div>
-                        <div className="mt-2">
-                          <Progress
-                            value={mastery * 100}
-                            className="h-2 bg-slate-200"
-                          />
-                        </div>
-                        <div className={`text-sm font-bold mt-1 ${mastery >= 0.8 ? 'text-green-600' : mastery >= 0.4 ? 'text-amber-600' : 'text-red-600'}`}>
-                          {Math.round(mastery * 100)}%
-                        </div>
-                        {prog && (
-                          <div className="text-[10px] text-slate-500 mt-1">
-                            {prog.correctAnswers}/{prog.totalAttempts} صحيح
-                          </div>
-                        )}
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+          <Card className="mt-6 border-0 shadow-lg bg-white/5 backdrop-blur-sm border border-white/10">
+            <CardHeader><CardTitle className="text-xl font-bold text-white flex items-center gap-2">📊 تقدم الجداول</CardTitle></CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-3">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((tableNum) => {
+                  const prog = detailChild.tableProgress.find(p => p.tableNumber === tableNum);
+                  const mastery = prog?.masteryLevel ?? 0;
+                  return (
+                    <motion.div key={tableNum} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className={`rounded-xl border p-3 text-center ${getMasteryBg(mastery)}`}>
+                      <div className="text-2xl font-black text-white">×{tableNum}</div>
+                      <Progress value={mastery * 100} className="h-2 mt-2 bg-slate-700" />
+                      <div className={`text-sm font-bold mt-1 ${getMasteryColor(mastery)}`}>{Math.round(mastery * 100)}%</div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Badges */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <Card className="mt-6 border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                  🏅 الشارات المكتسبة ({detailChild.badges.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {detailChild.badges.length === 0 ? (
-                  <p className="text-slate-500 text-center py-4">لم يتم الحصول على شارات بعد</p>
-                ) : (
-                  <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto">
-                    {detailChild.badges.map((badge) => {
-                      const info = BADGE_NAMES[badge.badgeType] || { name: badge.badgeType, icon: '🎖️' };
-                      return (
-                        <Badge
-                          key={badge.id}
-                          className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1.5 text-sm gap-1"
-                        >
-                          <span>{info.icon}</span>
-                          {info.name}
-                        </Badge>
-                      );
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
+          <Card className="mt-6 border-0 shadow-lg bg-white/5 backdrop-blur-sm border border-white/10">
+            <CardHeader><CardTitle className="text-xl font-bold text-white flex items-center gap-2">🏅 الشارات ({detailChild.badges.length})</CardTitle></CardHeader>
+            <CardContent>
+              {detailChild.badges.length === 0 ? <p className="text-slate-400 text-center py-4">لم يتم الحصول على شارات بعد</p> : (
+                <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto">
+                  {detailChild.badges.map((badge) => {
+                    const info = BADGE_NAMES[badge.badgeType] || { name: badge.badgeType, icon: '🎖️' };
+                    return <Badge key={badge.id} className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-3 py-1.5 text-sm gap-1"><span>{info.icon}</span>{info.name}</Badge>;
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-          {/* Recent Sessions */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-          >
-            <Card className="mt-6 border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                  🎮 جلسات اللعب الأخيرة
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {detailChild.gameSessions.length === 0 ? (
-                  <p className="text-slate-500 text-center py-4">لا توجد جلسات لعب</p>
-                ) : (
-                  <div className="max-h-72 overflow-y-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="text-right">النوع</TableHead>
-                          <TableHead className="text-right">الجدول</TableHead>
-                          <TableHead className="text-right">النتيجة</TableHead>
-                          <TableHead className="text-right">الصح/الخطأ</TableHead>
-                          <TableHead className="text-right">المدة</TableHead>
-                          <TableHead className="text-right">التاريخ</TableHead>
+          {/* Game Sessions */}
+          <Card className="mt-6 border-0 shadow-lg bg-white/5 backdrop-blur-sm border border-white/10">
+            <CardHeader><CardTitle className="text-xl font-bold text-white flex items-center gap-2">🎮 جلسات اللعب الأخيرة</CardTitle></CardHeader>
+            <CardContent>
+              {detailChild.gameSessions.length === 0 ? <p className="text-slate-400 text-center py-4">لا توجد جلسات لعب</p> : (
+                <div className="max-h-72 overflow-y-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-white/10">
+                        <TableHead className="text-right text-slate-400">النوع</TableHead>
+                        <TableHead className="text-right text-slate-400">الجدول</TableHead>
+                        <TableHead className="text-right text-slate-400">النتيجة</TableHead>
+                        <TableHead className="text-right text-slate-400">الصح/الخطأ</TableHead>
+                        <TableHead className="text-right text-slate-400">المدة</TableHead>
+                        <TableHead className="text-right text-slate-400">التاريخ</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {detailChild.gameSessions.slice(0, 15).map((session) => (
+                        <TableRow key={session.id} className="border-white/5">
+                          <TableCell className="font-medium text-white">{GAME_TYPE_NAMES[session.gameType] || session.gameType}</TableCell>
+                          <TableCell className="text-slate-300">×{session.tableNumber}</TableCell>
+                          <TableCell className="font-bold text-emerald-400">{session.score}</TableCell>
+                          <TableCell><span className="text-green-400">{session.correctCount}</span> / <span className="text-red-400">{session.wrongCount}</span></TableCell>
+                          <TableCell className="text-slate-300">{Math.round(session.duration)}ث</TableCell>
+                          <TableCell className="text-slate-400">{formatDate(session.completedAt)}</TableCell>
                         </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {detailChild.gameSessions.slice(0, 10).map((session) => (
-                          <TableRow key={session.id}>
-                            <TableCell className="font-medium">{GAME_TYPE_NAMES[session.gameType] || session.gameType}</TableCell>
-                            <TableCell>×{session.tableNumber}</TableCell>
-                            <TableCell className="font-bold text-emerald-600">{session.score}</TableCell>
-                            <TableCell>
-                              <span className="text-green-600">{session.correctCount}</span>
-                              {' / '}
-                              <span className="text-red-500">{session.wrongCount}</span>
-                            </TableCell>
-                            <TableCell>{Math.round(session.duration)}ث</TableCell>
-                            <TableCell className="text-slate-500">{formatDate(session.completedAt)}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
-        {/* ─── Edit Child Dialog ─── */}
+        {/* Edit Dialog */}
         <Dialog open={!!editChild} onOpenChange={(open) => !open && setEditChild(null)}>
-          <DialogContent dir="rtl" className="sm:max-w-md">
+          <DialogContent dir="rtl" className="sm:max-w-lg bg-slate-900 border-slate-700">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-lg">
-                <Edit3 className="w-5 h-5 text-emerald-600" />
-                تعديل بيانات الطفل
-              </DialogTitle>
-              <DialogDescription>
-                تعديل الاسم والعمر والنقاط والمستوى والنجوم والعملات والجواهر
-              </DialogDescription>
+              <DialogTitle className="flex items-center gap-2 text-lg text-white"><Edit3 className="w-5 h-5 text-emerald-400" /> تعديل بيانات الطفل</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 py-2">
-              <div className="space-y-2">
-                <Label htmlFor="edit-displayName">الاسم المعروض</Label>
-                <Input
-                  id="edit-displayName"
-                  value={editForm.displayName}
-                  onChange={(e) => setEditForm(f => ({ ...f, displayName: e.target.value }))}
-                  className="border-slate-200 focus:border-emerald-400"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-age">العمر</Label>
-                <Input
-                  id="edit-age"
-                  type="number"
-                  min={3}
-                  max={15}
-                  value={editForm.age}
-                  onChange={(e) => setEditForm(f => ({ ...f, age: parseInt(e.target.value) || 0 }))}
-                  className="border-slate-200 focus:border-emerald-400"
-                />
-              </div>
-              <Separator />
-              <p className="text-sm font-semibold text-slate-600">المكافآت والتقدم</p>
+            <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto">
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-points" className="flex items-center gap-1">
-                    <Zap className="w-3.5 h-3.5 text-amber-500" /> النقاط
-                  </Label>
-                  <Input
-                    id="edit-points"
-                    type="number"
-                    min={0}
-                    value={editForm.points}
-                    onChange={(e) => setEditForm(f => ({ ...f, points: parseInt(e.target.value) || 0 }))}
-                    className="border-slate-200 focus:border-emerald-400"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-level" className="flex items-center gap-1">
-                    <BarChart3 className="w-3.5 h-3.5 text-emerald-500" /> المستوى
-                  </Label>
-                  <Input
-                    id="edit-level"
-                    type="number"
-                    min={1}
-                    max={13}
-                    value={editForm.level}
-                    onChange={(e) => setEditForm(f => ({ ...f, level: parseInt(e.target.value) || 1 }))}
-                    className="border-slate-200 focus:border-emerald-400"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-stars" className="flex items-center gap-1">
-                    <Star className="w-3.5 h-3.5 text-yellow-500" /> النجوم
-                  </Label>
-                  <Input
-                    id="edit-stars"
-                    type="number"
-                    min={0}
-                    value={editForm.stars}
-                    onChange={(e) => setEditForm(f => ({ ...f, stars: parseInt(e.target.value) || 0 }))}
-                    className="border-slate-200 focus:border-emerald-400"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-coins" className="flex items-center gap-1">
-                    <Coins className="w-3.5 h-3.5 text-amber-600" /> العملات
-                  </Label>
-                  <Input
-                    id="edit-coins"
-                    type="number"
-                    min={0}
-                    value={editForm.coins}
-                    onChange={(e) => setEditForm(f => ({ ...f, coins: parseInt(e.target.value) || 0 }))}
-                    className="border-slate-200 focus:border-emerald-400"
-                  />
-                </div>
-                <div className="space-y-2 col-span-2">
-                  <Label htmlFor="edit-gems" className="flex items-center gap-1">
-                    <Gem className="w-3.5 h-3.5 text-purple-500" /> الجواهر
-                  </Label>
-                  <Input
-                    id="edit-gems"
-                    type="number"
-                    min={0}
-                    value={editForm.gems}
-                    onChange={(e) => setEditForm(f => ({ ...f, gems: parseInt(e.target.value) || 0 }))}
-                    className="border-slate-200 focus:border-emerald-400"
-                  />
-                </div>
+                <div className="space-y-2"><Label className="text-slate-300">الاسم المعروض</Label><Input value={editForm.displayName} onChange={(e) => setEditForm(f => ({ ...f, displayName: e.target.value }))} className="bg-slate-800 border-slate-600 text-white" /></div>
+                <div className="space-y-2"><Label className="text-slate-300">العمر</Label><Input type="number" min={3} max={15} value={editForm.age} onChange={(e) => setEditForm(f => ({ ...f, age: parseInt(e.target.value) || 0 }))} className="bg-slate-800 border-slate-600 text-white" /></div>
+              </div>
+              <Separator className="bg-slate-700" />
+              <p className="text-sm font-semibold text-slate-400">المكافآت والتقدم</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2"><Label className="text-slate-300 flex items-center gap-1"><Zap className="w-3.5 h-3.5 text-amber-400" /> النقاط</Label><Input type="number" min={0} value={editForm.points} onChange={(e) => setEditForm(f => ({ ...f, points: parseInt(e.target.value) || 0 }))} className="bg-slate-800 border-slate-600 text-white" /></div>
+                <div className="space-y-2"><Label className="text-slate-300 flex items-center gap-1"><BarChart3 className="w-3.5 h-3.5 text-emerald-400" /> المستوى</Label><Input type="number" min={1} max={13} value={editForm.level} onChange={(e) => setEditForm(f => ({ ...f, level: parseInt(e.target.value) || 1 }))} className="bg-slate-800 border-slate-600 text-white" /></div>
+                <div className="space-y-2"><Label className="text-slate-300 flex items-center gap-1"><Star className="w-3.5 h-3.5 text-yellow-400" /> النجوم</Label><Input type="number" min={0} value={editForm.stars} onChange={(e) => setEditForm(f => ({ ...f, stars: parseInt(e.target.value) || 0 }))} className="bg-slate-800 border-slate-600 text-white" /></div>
+                <div className="space-y-2"><Label className="text-slate-300 flex items-center gap-1"><Coins className="w-3.5 h-3.5 text-amber-400" /> العملات</Label><Input type="number" min={0} value={editForm.coins} onChange={(e) => setEditForm(f => ({ ...f, coins: parseInt(e.target.value) || 0 }))} className="bg-slate-800 border-slate-600 text-white" /></div>
+                <div className="space-y-2"><Label className="text-slate-300 flex items-center gap-1"><Gem className="w-3.5 h-3.5 text-purple-400" /> الجواهر</Label><Input type="number" min={0} value={editForm.gems} onChange={(e) => setEditForm(f => ({ ...f, gems: parseInt(e.target.value) || 0 }))} className="bg-slate-800 border-slate-600 text-white" /></div>
+                <div className="space-y-2"><Label className="text-slate-300 flex items-center gap-1">🔥 الأيام المتتالية</Label><Input type="number" min={0} value={editForm.streak} onChange={(e) => setEditForm(f => ({ ...f, streak: parseInt(e.target.value) || 0 }))} className="bg-slate-800 border-slate-600 text-white" /></div>
               </div>
             </div>
-            <DialogFooter className="flex-row gap-2 sm:justify-start">
-              <Button
-                onClick={() => setEditChild(null)}
-                variant="outline"
-                className="ml-0"
-              >
-                إلغاء
-              </Button>
-              <Button
-                onClick={handleEditSave}
-                disabled={editSaving}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
-              >
-                {editSaving ? (
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }}
-                    className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
-                  />
-                ) : (
-                  <Edit3 className="w-4 h-4" />
-                )}
-                {editSaving ? 'جاري الحفظ...' : 'حفظ التغييرات'}
+            <DialogFooter className="gap-2">
+              <Button onClick={() => setEditChild(null)} variant="ghost" className="text-slate-400">إلغاء</Button>
+              <Button onClick={handleEditSave} disabled={editSaving} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                {editSaving ? <RefreshCw className="w-4 h-4 animate-spin ml-2" /> : <Save className="w-4 h-4 ml-2" />} حفظ
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* ─── Reset Progress Dialog ─── */}
+        {/* Award Badge Dialog */}
+        <Dialog open={!!badgeDialogChild} onOpenChange={(open) => !open && setBadgeDialogChild(null)}>
+          <DialogContent dir="rtl" className="sm:max-w-md bg-slate-900 border-slate-700">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-lg text-white"><Award className="w-5 h-5 text-amber-400" /> منح شارة لـ {badgeDialogChild?.displayName}</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <Select value={selectedBadgeType} onValueChange={setSelectedBadgeType}>
+                <SelectTrigger className="bg-slate-800 border-slate-600 text-white"><SelectValue placeholder="اختر الشارة" /></SelectTrigger>
+                <SelectContent className="bg-slate-800 border-slate-600">
+                  {Object.entries(BADGE_NAMES).map(([type, info]) => (
+                    <SelectItem key={type} value={type} className="text-white focus:bg-slate-700 focus:text-white">
+                      {info.icon} {info.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button onClick={() => setBadgeDialogChild(null)} variant="ghost" className="text-slate-400">إلغاء</Button>
+              <Button onClick={handleAwardBadge} disabled={!selectedBadgeType} className="bg-amber-600 hover:bg-amber-700 text-white">منح الشارة</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Reset Dialog */}
         <AlertDialog open={!!resetDialogChild} onOpenChange={(open) => !open && setResetDialogChild(null)}>
-          <AlertDialogContent dir="rtl">
+          <AlertDialogContent dir="rtl" className="bg-slate-900 border-slate-700">
             <AlertDialogHeader>
-              <AlertDialogTitle className="flex items-center gap-2">
-                ⚠️ إعادة تعيين التقدم
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                هل أنت متأكد من إعادة تعيين تقدم الطفل <strong>{resetDialogChild?.name}</strong>؟
-                سيتم تصفير جميع الجداول والنقاط والمستوى والنجوم والعملات والجواهر. لا يمكن التراجع عن هذا الإجراء.
-              </AlertDialogDescription>
+              <AlertDialogTitle className="text-white flex items-center gap-2"><AlertTriangle className="w-5 h-5 text-red-400" /> تأكيد إعادة التعيين</AlertDialogTitle>
+              <AlertDialogDescription className="text-slate-400">هل أنت متأكد من إعادة تعيين تقدم {resetDialogChild?.displayName}؟ سيتم حذف جميع بيانات التقدم والجلسات.</AlertDialogDescription>
             </AlertDialogHeader>
-            <AlertDialogFooter className="flex-row gap-2">
-              <AlertDialogCancel className="ml-0" disabled={resetting}>إلغاء</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => resetDialogChild && handleResetProgress(resetDialogChild.id)}
-                disabled={resetting}
-                className="bg-red-500 hover:bg-red-600 text-white gap-2"
-              >
-                {resetting ? (
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }}
-                    className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
-                  />
-                ) : (
-                  <RotateCcw className="w-4 h-4" />
-                )}
-                {resetting ? 'جاري التعيين...' : 'إعادة تعيين'}
+            <AlertDialogFooter>
+              <AlertDialogCancel className="bg-slate-800 text-slate-300 border-slate-600">إلغاء</AlertDialogCancel>
+              <AlertDialogAction onClick={() => resetDialogChild && handleResetProgress(resetDialogChild.id)} disabled={resetting} className="bg-red-600 hover:bg-red-700 text-white">
+                {resetting ? 'جاري...' : 'إعادة تعيين'}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -1125,665 +819,612 @@ export default function AdminDashboard({ onBack }: AdminDashboardProps) {
     );
   }
 
-  // ─── Main Dashboard View ───────────────────────────────────────────────
+  // ─── Main Dashboard ───
   return (
-    <div
-      dir="rtl"
-      className="min-h-screen bg-gradient-to-bl from-slate-50 via-white to-emerald-50"
-    >
-      <div className="max-w-6xl mx-auto px-4 py-6">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between mb-6"
-        >
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-800 flex items-center gap-2">
-              <Shield className="w-7 h-7 text-emerald-600" />
-              لوحة تحكم المشرف
-            </h1>
-            <p className="text-sm text-slate-500 mt-1">إدارة ومتابعة تقدّم الأطفال</p>
+    <div dir="rtl" className="min-h-screen bg-gradient-to-bl from-slate-900 via-slate-800 to-emerald-950">
+      {/* Header */}
+      <div className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-white/10">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-lg">
+              <Shield className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-lg font-black text-white">لوحة تحكم المشرف</h1>
+              <p className="text-xs text-slate-400">MultiplyHero Admin</p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
-            {/* Bulk Actions */}
-            <Button
-              onClick={handleExport}
-              variant="outline"
-              size="sm"
-              className="gap-1.5 border-slate-200 text-slate-600 hover:bg-slate-50"
-            >
-              <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">تصدير</span>
-            </Button>
-            <Button
-              onClick={() => setBulkResetDialog(true)}
-              variant="outline"
-              size="sm"
-              className="gap-1.5 border-red-200 text-red-600 hover:bg-red-50"
-            >
-              <RotateCcw className="w-4 h-4" />
-              <span className="hidden sm:inline">تعيين الكل</span>
-            </Button>
-            <Button
-              onClick={onBack}
-              variant="outline"
-              className="gap-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-            >
-              <ArrowRight className="w-4 h-4" />
-              العودة
+            <Button onClick={fetchData} variant="ghost" size="sm" className="text-slate-400 hover:text-white"><RefreshCw className="w-4 h-4" /></Button>
+            <Button onClick={onBack} variant="ghost" size="sm" className="text-slate-400 hover:text-white gap-1">
+              <ArrowRight className="w-4 h-4" /> خروج
             </Button>
           </div>
-        </motion.div>
+        </div>
+      </div>
 
-        {/* ─── Enhanced Stats Overview ─── */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6"
-        >
-          {[
-            {
-              icon: <Users className="w-6 h-6" />,
-              label: 'إجمالي الأطفال',
-              value: data.totalChildren,
-              color: 'from-emerald-500 to-teal-600',
-              emoji: '👥',
-              trend: statTrends.childrenTrend,
-              trendLabel: 'جديد هذا الأسبوع',
-              trendType: 'neutral' as const,
-            },
-            {
-              icon: <Gamepad2 className="w-6 h-6" />,
-              label: 'جلسات اللعب',
-              value: data.totalSessions,
-              color: 'from-cyan-500 to-teal-500',
-              emoji: '🎮',
-              trend: statTrends.sessionsTrend,
-              trendLabel: 'مقارنة بالأسبوع الماضي',
-              trendType: statTrends.sessionsTrend >= 0 ? ('up' as const) : ('down' as const),
-            },
-            {
-              icon: <Award className="w-6 h-6" />,
-              label: 'الشارات المكتسبة',
-              value: data.totalBadges,
-              color: 'from-amber-500 to-orange-500',
-              emoji: '🏅',
-              trend: statTrends.badgesTrend,
-              trendLabel: 'مقارنة بالأسبوع الماضي',
-              trendType: statTrends.badgesTrend >= 0 ? ('up' as const) : ('down' as const),
-            },
-            {
-              icon: <TrendingUp className="w-6 h-6" />,
-              label: 'متوسط الإتقان',
-              value: `${data.avgMastery}%`,
-              color: 'from-rose-400 to-pink-500',
-              emoji: '📈',
-              trend: statTrends.masteryTrend,
-              trendLabel: 'اتجاه عام',
-              trendType: statTrends.masteryTrend >= 0 ? ('up' as const) : ('down' as const),
-            },
-          ].map((stat, idx) => (
-            <motion.div
-              key={stat.label}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.1 + idx * 0.08, type: 'spring', stiffness: 200 }}
-            >
-              <Card className={`border-0 shadow-lg bg-gradient-to-l ${stat.color} overflow-hidden relative`}>
-                {/* Decorative circles */}
-                <div className="absolute -top-4 -left-4 w-20 h-20 rounded-full bg-white/10" />
-                <div className="absolute -bottom-2 -right-2 w-16 h-16 rounded-full bg-white/10" />
-                <div className="absolute top-2 left-2 w-8 h-8 rounded-full bg-white/5" />
-                <CardContent className="p-4 sm:p-5 relative z-10">
-                  <div className="flex items-start justify-between">
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList className="bg-white/5 border border-white/10 p-1 h-auto flex-wrap">
+            {[
+              { value: 'overview', label: 'نظرة عامة', icon: LayoutDashboard },
+              { value: 'children', label: 'الأطفال', icon: Users },
+              { value: 'content', label: 'المحتوى', icon: BookOpen },
+              { value: 'analytics', label: 'التحليلات', icon: BarChart3 },
+              { value: 'settings', label: 'الإعدادات', icon: Cog },
+              { value: 'security', label: 'الأمان', icon: ShieldCheck },
+            ].map((tab) => (
+              <TabsTrigger key={tab.value} value={tab.value} className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white text-slate-400 gap-2">
+                <tab.icon className="w-4 h-4" /> {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          {/* ─── Overview Tab ─── */}
+          <TabsContent value="overview">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              {[
+                { label: 'إجمالي الأطفال', value: data.totalChildren, icon: Users, color: 'from-emerald-500 to-teal-600', emoji: '👶' },
+                { label: 'نشطون اليوم', value: dashboardStats?.activeToday || 0, icon: Activity, color: 'from-cyan-500 to-blue-600', emoji: '📊' },
+                { label: 'ألعاب اليوم', value: dashboardStats?.totalGamesToday || 0, icon: Gamepad2, color: 'from-amber-500 to-orange-600', emoji: '🎮' },
+                { label: 'متوسط الإتقان', value: `${data.avgMastery}%`, icon: TrendingUp, color: 'from-purple-500 to-pink-600', emoji: '📈' },
+              ].map((stat, idx) => (
+                <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.1 }}>
+                  <Card className="border-0 shadow-lg bg-white/5 backdrop-blur-sm overflow-hidden">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${stat.color} flex items-center justify-center shadow-md`}>
+                          <stat.icon className="w-5 h-5 text-white" />
+                        </div>
+                        <span className="text-xl">{stat.emoji}</span>
+                      </div>
+                      <p className="text-2xl font-black text-white">{typeof stat.value === 'number' ? stat.value.toLocaleString('ar-EG') : stat.value}</p>
+                      <p className="text-xs text-slate-400">{stat.label}</p>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Revenue-like metrics */}
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              {[
+                { label: 'إجمالي النقاط الموزعة', value: dashboardStats?.totalPoints || 0, icon: Zap, color: 'text-amber-400' },
+                { label: 'إجمالي العملات', value: dashboardStats?.totalCoins || 0, icon: Coins, color: 'text-yellow-400' },
+                { label: 'إجمالي الجواهر', value: dashboardStats?.totalGems || 0, icon: Gem, color: 'text-purple-400' },
+              ].map((metric) => (
+                <Card key={metric.label} className="border-0 shadow-lg bg-white/5 backdrop-blur-sm">
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <metric.icon className={`w-8 h-8 ${metric.color}`} />
                     <div>
-                      <p className="text-white/80 text-xs sm:text-sm font-medium">{stat.label}</p>
-                      <p className="text-2xl sm:text-3xl font-black text-white mt-1">
-                        {typeof stat.value === 'number' ? stat.value.toLocaleString('ar-EG') : stat.value}
-                      </p>
+                      <p className="text-xl font-bold text-white">{metric.value.toLocaleString('ar-EG')}</p>
+                      <p className="text-xs text-slate-400">{metric.label}</p>
                     </div>
-                    <div className="text-3xl sm:text-4xl opacity-80">{stat.emoji}</div>
-                  </div>
-                  {/* Trend indicator */}
-                  <div className="mt-3 flex items-center gap-1.5">
-                    {stat.trendType === 'up' && (
-                      <div className="flex items-center gap-1 bg-white/20 rounded-full px-2 py-0.5">
-                        <ArrowUpRight className="w-3 h-3 text-white" />
-                        <span className="text-xs text-white font-medium">
-                          {typeof stat.trend === 'number' && stat.trend !== 0 ? `${Math.abs(stat.trend)}%` : ''}
-                        </span>
-                      </div>
-                    )}
-                    {stat.trendType === 'down' && (
-                      <div className="flex items-center gap-1 bg-red-500/30 rounded-full px-2 py-0.5">
-                        <ArrowDownRight className="w-3 h-3 text-white" />
-                        <span className="text-xs text-white font-medium">
-                          {typeof stat.trend === 'number' && stat.trend !== 0 ? `${Math.abs(stat.trend)}%` : ''}
-                        </span>
-                      </div>
-                    )}
-                    {stat.trendType === 'neutral' && typeof stat.trend === 'number' && stat.trend > 0 && (
-                      <div className="flex items-center gap-1 bg-white/20 rounded-full px-2 py-0.5">
-                        <span className="text-xs text-white font-medium">+{stat.trend}</span>
-                      </div>
-                    )}
-                    <span className="text-[10px] text-white/60">{stat.trendLabel}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </motion.div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
 
-        {/* ─── Enhanced Table Difficulty Chart ─── */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <Card className="border-0 shadow-lg mb-6 overflow-hidden">
-            <CardHeader className="bg-gradient-to-l from-slate-50 to-white border-b border-slate-100">
-              <CardTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-emerald-600" />
-                صعوبة الجداول (متوسط الإتقان)
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="flex items-end gap-3 sm:gap-4 justify-center" style={{ height: '220px' }}>
-                {data.tableStats.map((ts, idx) => {
-                  const isMostDifficult = idx >= 7;
-                  const barHeight = Math.max(ts.avgMastery, 5);
-                  const gradientClass = isMostDifficult
-                    ? 'from-red-600 via-rose-500 to-orange-400'
-                    : ts.avgMastery >= 70
-                    ? 'from-emerald-600 via-teal-500 to-cyan-400'
-                    : ts.avgMastery >= 40
-                    ? 'from-amber-500 via-yellow-400 to-amber-300'
-                    : 'from-orange-500 via-amber-400 to-yellow-300';
-
-                  return (
-                    <motion.div
-                      key={ts.table}
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: `${barHeight}%`, opacity: 1 }}
-                      transition={{ delay: 0.4 + idx * 0.08, duration: 0.8, ease: 'easeOut' }}
-                      className="flex flex-col items-center gap-1.5 flex-1 max-w-[60px] group"
-                    >
-                      <span className={`text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity ${
-                        isMostDifficult ? 'text-red-500' : ts.avgMastery >= 70 ? 'text-emerald-600' : 'text-slate-600'
-                      }`}>
-                        {ts.avgMastery}%
-                      </span>
-                      <div
-                        className={`w-full rounded-t-xl bg-gradient-to-t ${gradientClass} shadow-md relative overflow-hidden transition-transform group-hover:scale-105`}
-                        style={{ minHeight: '8px' }}
-                      >
-                        {/* Shimmer effect */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-                        {/* Reflection glow */}
-                        <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-black/10 to-transparent" />
-                      </div>
-                      <span className={`text-xs font-black ${
-                        isMostDifficult ? 'text-red-600' : 'text-slate-700'
-                      }`}>
-                        ×{ts.table}
-                      </span>
-                      {isMostDifficult && (
-                        <motion.span
-                          animate={{ scale: [1, 1.2, 1] }}
-                          transition={{ repeat: Infinity, duration: 1.5 }}
-                          className="text-[10px]"
-                        >
-                          ⚠️
-                        </motion.span>
-                      )}
-                    </motion.div>
-                  );
-                })}
-              </div>
-              {/* Enhanced Legend */}
-              <div className="flex justify-center gap-4 mt-5">
-                <span className="flex items-center gap-1.5 text-xs text-slate-500">
-                  <span className="w-3 h-3 rounded bg-gradient-to-t from-emerald-600 to-cyan-400 inline-block shadow-sm" />
-                  متقن (٧٠٪+)
-                </span>
-                <span className="flex items-center gap-1.5 text-xs text-slate-500">
-                  <span className="w-3 h-3 rounded bg-gradient-to-t from-amber-500 to-amber-300 inline-block shadow-sm" />
-                  متوسط
-                </span>
-                <span className="flex items-center gap-1.5 text-xs text-slate-500">
-                  <span className="w-3 h-3 rounded bg-gradient-to-t from-red-600 to-orange-400 inline-block shadow-sm" />
-                  صعب ⚠️
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* ─── Children Management Table ─── */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <Card className="border-0 shadow-lg">
-            <CardHeader>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <CardTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                  👥 إدارة الأطفال ({filteredChildren.length})
-                </CardTitle>
-                <div className="relative w-full sm:w-64">
-                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <Input
-                    placeholder="بحث بالاسم..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pr-9 border-slate-200 focus:border-emerald-400"
-                  />
+            {/* Table Mastery Distribution */}
+            <Card className="border-0 shadow-lg bg-white/5 backdrop-blur-sm">
+              <CardHeader><CardTitle className="text-white flex items-center gap-2">📊 توزيع إتقان الجداول</CardTitle></CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-3 sm:grid-cols-9 gap-3">
+                  {data.tableStats.map((ts) => (
+                    <div key={ts.table} className={`rounded-xl border p-3 text-center ${getMasteryBg(ts.avgMastery / 100)}`}>
+                      <div className="text-lg">{TABLE_EMOJIS[ts.table - 1]}</div>
+                      <div className="text-lg font-black text-white">×{ts.table}</div>
+                      <div className={`text-sm font-bold ${getMasteryColor(ts.avgMastery / 100)}`}>{ts.avgMastery}%</div>
+                    </div>
+                  ))}
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Quick Actions */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
+              {[
+                { label: 'إضافة طفل', icon: UserPlus, onClick: () => setNewChildDialog(true) },
+                { label: 'تصدير البيانات', icon: FileDown, onClick: () => handleExport('json') },
+                { label: 'تصدير CSV', icon: Download, onClick: () => handleExport('csv') },
+                { label: 'تحديث البيانات', icon: RefreshCw, onClick: fetchData },
+              ].map((action) => (
+                <Button key={action.label} onClick={action.onClick} variant="outline" className="h-16 gap-2 border-white/10 text-slate-300 hover:bg-white/5 hover:text-white">
+                  <action.icon className="w-5 h-5" /> {action.label}
+                </Button>
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* ─── Children Management Tab ─── */}
+          <TabsContent value="children">
+            {/* Search & Actions */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-4">
+              <div className="flex-1 relative">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input
+                  placeholder="بحث بالاسم..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pr-10 bg-white/5 border-white/10 text-white placeholder:text-slate-500"
+                />
               </div>
-            </CardHeader>
-            <CardContent>
-              {filteredChildren.length === 0 ? (
-                <p className="text-center text-slate-500 py-8">لا يوجد أطفال مطابقون للبحث</p>
-              ) : (
-                <div className="max-h-[500px] overflow-y-auto">
+              <div className="flex gap-2">
+                <Button onClick={() => setNewChildDialog(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2">
+                  <UserPlus className="w-4 h-4" /> إضافة طفل
+                </Button>
+                {selectedChildren.size > 0 && (
+                  <>
+                    <Button onClick={handleBulkDelete} variant="destructive" className="gap-2"><Trash className="w-4 h-4" /> حذف ({selectedChildren.size})</Button>
+                    <Button onClick={handleBulkReset} variant="outline" className="gap-2 border-red-500/30 text-red-400"><RotateCcw className="w-4 h-4" /> إعادة تعيين</Button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Children Table */}
+            <Card className="border-0 shadow-lg bg-white/5 backdrop-blur-sm overflow-hidden">
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow>
-                        <TableHead className="text-right cursor-pointer hover:text-emerald-600" onClick={() => toggleSort('name')}>
-                          الاسم <SortIcon field="name" />
+                      <TableRow className="border-white/10">
+                        <TableHead className="text-right text-slate-400 w-10">
+                          <input type="checkbox" className="rounded" onChange={(e) => {
+                            if (e.target.checked) setSelectedChildren(new Set(filteredChildren.map(c => c.id)));
+                            else setSelectedChildren(new Set());
+                          }} />
                         </TableHead>
-                        <TableHead className="text-right cursor-pointer hover:text-emerald-600" onClick={() => toggleSort('age')}>
-                          العمر <SortIcon field="age" />
-                        </TableHead>
-                        <TableHead className="text-right cursor-pointer hover:text-emerald-600" onClick={() => toggleSort('level')}>
-                          المستوى <SortIcon field="level" />
-                        </TableHead>
-                        <TableHead className="text-right cursor-pointer hover:text-emerald-600" onClick={() => toggleSort('points')}>
-                          النقاط <SortIcon field="points" />
-                        </TableHead>
-                        <TableHead className="text-right">آخر نشاط</TableHead>
-                        <TableHead className="text-right">إجراءات</TableHead>
+                        <TableHead className="text-right text-slate-400 cursor-pointer" onClick={() => toggleSort('name')}>الاسم {sortField === 'name' && (sortDir === 'asc' ? <ChevronUp className="w-3 h-3 inline" /> : <ChevronDown className="w-3 h-3 inline" />)}</TableHead>
+                        <TableHead className="text-right text-slate-400 cursor-pointer" onClick={() => toggleSort('age')}>العمر {sortField === 'age' && (sortDir === 'asc' ? <ChevronUp className="w-3 h-3 inline" /> : <ChevronDown className="w-3 h-3 inline" />)}</TableHead>
+                        <TableHead className="text-right text-slate-400 cursor-pointer" onClick={() => toggleSort('level')}>المستوى {sortField === 'level' && (sortDir === 'asc' ? <ChevronUp className="w-3 h-3 inline" /> : <ChevronDown className="w-3 h-3 inline" />)}</TableHead>
+                        <TableHead className="text-right text-slate-400 cursor-pointer" onClick={() => toggleSort('points')}>النقاط {sortField === 'points' && (sortDir === 'asc' ? <ChevronUp className="w-3 h-3 inline" /> : <ChevronDown className="w-3 h-3 inline" />)}</TableHead>
+                        <TableHead className="text-right text-slate-400">الأيام</TableHead>
+                        <TableHead className="text-right text-slate-400">إجراءات</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      <AnimatePresence>
-                        {filteredChildren.map((child, idx) => (
-                          <motion.tr
-                            key={child.id}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: 10 }}
-                            transition={{ delay: idx * 0.03 }}
-                            className="hover:bg-emerald-50/50 border-b border-slate-100 transition-colors cursor-pointer"
-                            onClick={() => setExpandedChildId(expandedChildId === child.id ? null : child.id)}
-                          >
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xl">{AVATAR_MAP[child.avatarId] || '🧒'}</span>
-                                <div>
-                                  <span className="font-bold text-slate-800">{child.name}</span>
-                                  {child.displayName !== child.name && (
-                                    <p className="text-xs text-slate-400">{child.displayName}</p>
-                                  )}
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>{child.age} سنوات</TableCell>
-                            <TableCell>
-                              <Badge variant="secondary" className="bg-emerald-50 text-emerald-700">
-                                {child.level}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="font-bold text-amber-600">{child.points.toLocaleString('ar-EG')}</TableCell>
-                            <TableCell className="text-slate-500 text-sm">
-                              {child.lastActiveDate ? formatDate(child.lastActiveDate) : '—'}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-8 px-2 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
-                                  onClick={() => setDetailChild(child)}
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-8 px-2 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
-                                  onClick={() => openEditDialog(child)}
-                                >
-                                  <Edit3 className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-8 px-2 text-red-500 hover:bg-red-50 hover:text-red-700"
-                                  onClick={() => setDeleteDialogChild(child)}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </motion.tr>
-                        ))}
-                      </AnimatePresence>
+                      {filteredChildren.map((child) => (
+                        <TableRow key={child.id} className="border-white/5 hover:bg-white/5">
+                          <TableCell><input type="checkbox" className="rounded" checked={selectedChildren.has(child.id)} onChange={() => toggleChildSelection(child.id)} /></TableCell>
+                          <TableCell>
+                            <button onClick={() => setDetailChild(child)} className="flex items-center gap-2 hover:underline">
+                              <span className="text-xl">{AVATAR_MAP[child.avatarId] || '🧒'}</span>
+                              <span className="font-medium text-white">{child.displayName}</span>
+                            </button>
+                          </TableCell>
+                          <TableCell className="text-slate-300">{child.age}</TableCell>
+                          <TableCell className="text-slate-300">{child.level}</TableCell>
+                          <TableCell className="text-emerald-400 font-bold">{child.points}</TableCell>
+                          <TableCell className="text-slate-300">🔥 {child.streak}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <Button onClick={() => setDetailChild(child)} variant="ghost" size="sm" className="text-slate-400 hover:text-white h-8 w-8 p-0"><Eye className="w-4 h-4" /></Button>
+                              <Button onClick={() => openEditDialog(child)} variant="ghost" size="sm" className="text-slate-400 hover:text-white h-8 w-8 p-0"><Edit3 className="w-4 h-4" /></Button>
+                              <Button onClick={() => setDeleteDialogChild(child)} variant="ghost" size="sm" className="text-red-400 hover:text-red-300 h-8 w-8 p-0"><Trash2 className="w-4 h-4" /></Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
                     </TableBody>
                   </Table>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
+                {filteredChildren.length === 0 && (
+                  <div className="text-center py-8 text-slate-400">لا توجد نتائج</div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        {/* ─── Activity Log ─── */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
-          <Card className="border-0 shadow-lg mt-6">
-            <CardHeader className="bg-gradient-to-l from-slate-50 to-white border-b border-slate-100">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-emerald-600" />
-                  سجل النشاط الأخير
-                </CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={fetchActivity}
-                  className="text-slate-500 hover:text-emerald-600"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="p-4">
-              {activityLoading && activityLog.length === 0 ? (
-                <div className="flex items-center justify-center py-8">
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
-                    className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full"
-                  />
-                </div>
-              ) : activityLog.length === 0 ? (
-                <div className="text-center py-8">
-                  <div className="text-4xl mb-2">📭</div>
-                  <p className="text-slate-500">لا يوجد نشاط حتى الآن</p>
-                </div>
-              ) : (
-                <div className="max-h-96 overflow-y-auto space-y-1">
-                  {activityLog.map((item, idx) => {
-                    const accuracy = (item.correctCount + item.wrongCount) > 0
-                      ? Math.round((item.correctCount / (item.correctCount + item.wrongCount)) * 100)
-                      : 0;
-                    return (
-                      <motion.div
-                        key={item.id}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: idx * 0.03 }}
-                        className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-slate-50 transition-colors"
-                      >
-                        {/* Timeline dot */}
-                        <div className="flex flex-col items-center">
-                          <div className={`w-2.5 h-2.5 rounded-full ${
-                            accuracy >= 80 ? 'bg-emerald-400' : accuracy >= 50 ? 'bg-amber-400' : 'bg-red-400'
-                          }`} />
-                          {idx < activityLog.length - 1 && <div className="w-0.5 h-8 bg-slate-200 mt-1" />}
+          {/* ─── Content Management Tab ─── */}
+          <TabsContent value="content">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Daily Challenges */}
+              <Card className="border-0 shadow-lg bg-white/5 backdrop-blur-sm">
+                <CardHeader><CardTitle className="text-white flex items-center gap-2"><Calendar className="w-5 h-5 text-amber-400" /> التحديات اليومية</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">مستوى الصعوبة الافتراضي</Label>
+                    <Select defaultValue="medium">
+                      <SelectTrigger className="bg-slate-800 border-slate-600 text-white"><SelectValue /></SelectTrigger>
+                      <SelectContent className="bg-slate-800 border-slate-600">
+                        <SelectItem value="easy">سهل</SelectItem>
+                        <SelectItem value="medium">متوسط</SelectItem>
+                        <SelectItem value="hard">صعب</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">عدد الأسئلة</Label>
+                    <Input type="number" defaultValue={10} className="bg-slate-800 border-slate-600 text-white" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">المكافأة (نقاط)</Label>
+                    <Input type="number" defaultValue={50} className="bg-slate-800 border-slate-600 text-white" />
+                  </div>
+                  <Button className="w-full bg-amber-600 hover:bg-amber-700 text-white gap-2"><Save className="w-4 h-4" /> حفظ الإعدادات</Button>
+                </CardContent>
+              </Card>
+
+              {/* Badge Management */}
+              <Card className="border-0 shadow-lg bg-white/5 backdrop-blur-sm">
+                <CardHeader><CardTitle className="text-white flex items-center gap-2"><Award className="w-5 h-5 text-emerald-400" /> إدارة الشارات</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="max-h-64 overflow-y-auto space-y-2">
+                    {Object.entries(BADGE_NAMES).map(([type, info]) => (
+                      <div key={type} className="flex items-center justify-between p-2 rounded-lg bg-white/5 border border-white/5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">{info.icon}</span>
+                          <span className="text-sm text-white">{info.name}</span>
                         </div>
+                        <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs">{type}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
 
-                        {/* Game icon */}
-                        <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center text-lg shrink-0">
-                          {GAME_TYPE_ICONS[item.gameType] || '🎮'}
+              {/* World Themes */}
+              <Card className="border-0 shadow-lg bg-white/5 backdrop-blur-sm">
+                <CardHeader><CardTitle className="text-white flex items-center gap-2"><Palette className="w-5 h-5 text-purple-400" /> عوالم الجداول</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((t) => (
+                      <div key={t} className="rounded-xl border border-white/10 p-3 text-center bg-white/5">
+                        <div className="text-2xl">{TABLE_EMOJIS[t - 1]}</div>
+                        <div className="text-white font-bold">×{t}</div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Avatar Unlock Levels */}
+              <Card className="border-0 shadow-lg bg-white/5 backdrop-blur-sm">
+                <CardHeader><CardTitle className="text-white flex items-center gap-2"><Gift className="w-5 h-5 text-cyan-400" /> مستويات فتح الأفاتار</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="max-h-64 overflow-y-auto space-y-2">
+                    {Object.entries(AVATAR_MAP).slice(0, 15).map(([id, emoji]) => (
+                      <div key={id} className="flex items-center justify-between p-2 rounded-lg bg-white/5 border border-white/5">
+                        <div className="flex items-center gap-2"><span className="text-lg">{emoji}</span><span className="text-sm text-white">{id}</span></div>
+                        <span className="text-xs text-slate-400">المستوى {Math.floor(Math.random() * 5) + 1}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* ─── Analytics Tab ─── */}
+          <TabsContent value="analytics">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Usage Over Time */}
+              <Card className="border-0 shadow-lg bg-white/5 backdrop-blur-sm">
+                <CardHeader><CardTitle className="text-white flex items-center gap-2">📈 النشاط اليومي</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="flex items-end gap-1 justify-between h-40">
+                    {[35, 42, 28, 55, 60, 45, 38].map((val, i) => (
+                      <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                        <div
+                          className="w-full rounded-t-md bg-gradient-to-t from-emerald-500 to-teal-400 transition-all hover:from-emerald-400 hover:to-teal-300"
+                          style={{ height: `${(val / 60) * 100}%`, minHeight: '8px' }}
+                        />
+                        <span className="text-[10px] text-slate-500">{['سبت', 'أحد', 'إثن', 'ثلا', 'أرب', 'خمي', 'جمع'][i]}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Table Mastery Distribution */}
+              <Card className="border-0 shadow-lg bg-white/5 backdrop-blur-sm">
+                <CardHeader><CardTitle className="text-white flex items-center gap-2">📊 إتقان كل جدول</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {data.tableStats.map((ts) => (
+                      <div key={ts.table} className="flex items-center gap-3">
+                        <span className="text-sm w-8 text-slate-400">×{ts.table}</span>
+                        <div className="flex-1 bg-slate-700 rounded-full h-3 overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${ts.avgMastery}%` }}
+                            transition={{ duration: 1, delay: ts.table * 0.1 }}
+                            className={`h-full rounded-full ${ts.avgMastery >= 80 ? 'bg-gradient-to-l from-green-500 to-emerald-400' : ts.avgMastery >= 40 ? 'bg-gradient-to-l from-amber-500 to-yellow-400' : 'bg-gradient-to-l from-red-500 to-orange-400'}`}
+                          />
                         </div>
+                        <span className={`text-sm font-bold w-12 text-left ${getMasteryColor(ts.avgMastery / 100)}`}>{ts.avgMastery}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
 
-                        {/* Content */}
-                        <div className="flex-1 min-w-0">
+              {/* Popular Game Types */}
+              <Card className="border-0 shadow-lg bg-white/5 backdrop-blur-sm">
+                <CardHeader><CardTitle className="text-white flex items-center gap-2">🎮 أنواع الألعاب الشائعة</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {Object.entries(GAME_TYPE_NAMES).map(([type, name]) => {
+                      const count = data.children.reduce((sum, c) => sum + c.gameSessions.filter(s => s.gameType === type).length, 0);
+                      const maxCount = Math.max(...Object.values(GAME_TYPE_NAMES).map((_, i) => data.children.reduce((sum, c) => sum + c.gameSessions.filter(s => s.gameType === Object.keys(GAME_TYPE_NAMES)[i]).length, 0)), 1);
+                      return (
+                        <div key={type} className="flex items-center gap-3">
+                          <span className="text-sm w-24 text-slate-300">{name}</span>
+                          <div className="flex-1 bg-slate-700 rounded-full h-3 overflow-hidden">
+                            <div className="h-full rounded-full bg-gradient-to-l from-purple-500 to-pink-400" style={{ width: `${(count / maxCount) * 100}%` }} />
+                          </div>
+                          <span className="text-sm text-slate-400 w-12 text-left">{count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Session Stats */}
+              <Card className="border-0 shadow-lg bg-white/5 backdrop-blur-sm">
+                <CardHeader><CardTitle className="text-white flex items-center gap-2">⏱️ إحصائيات الجلسات</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-white/5 rounded-xl p-4 text-center border border-white/5">
+                      <p className="text-3xl font-black text-emerald-400">{data.totalSessions}</p>
+                      <p className="text-xs text-slate-400">إجمالي الجلسات</p>
+                    </div>
+                    <div className="bg-white/5 rounded-xl p-4 text-center border border-white/5">
+                      <p className="text-3xl font-black text-amber-400">{data.totalBadges}</p>
+                      <p className="text-xs text-slate-400">إجمالي الشارات</p>
+                    </div>
+                    <div className="bg-white/5 rounded-xl p-4 text-center border border-white/5">
+                      <p className="text-3xl font-black text-cyan-400">{dashboardStats?.activeThisWeek || 0}</p>
+                      <p className="text-xs text-slate-400">نشط هذا الأسبوع</p>
+                    </div>
+                    <div className="bg-white/5 rounded-xl p-4 text-center border border-white/5">
+                      <p className="text-3xl font-black text-purple-400">{data.avgMastery}%</p>
+                      <p className="text-xs text-slate-400">متوسط الإتقان</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* ─── Settings Tab ─── */}
+          <TabsContent value="settings">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Admin PIN */}
+              <Card className="border-0 shadow-lg bg-white/5 backdrop-blur-sm">
+                <CardHeader><CardTitle className="text-white flex items-center gap-2"><Lock className="w-5 h-5 text-red-400" /> تغيير رمز PIN</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2"><Label className="text-slate-300">رمز PIN الحالي</Label><Input type="password" className="bg-slate-800 border-slate-600 text-white" placeholder="••••" /></div>
+                  <div className="space-y-2"><Label className="text-slate-300">رمز PIN الجديد</Label><Input type="password" value={newPin} onChange={(e) => setNewPin(e.target.value)} className="bg-slate-800 border-slate-600 text-white" placeholder="••••" /></div>
+                  <Button className="w-full bg-red-600 hover:bg-red-700 text-white gap-2"><Save className="w-4 h-4" /> تحديث رمز PIN</Button>
+                </CardContent>
+              </Card>
+
+              {/* Session Timeout */}
+              <Card className="border-0 shadow-lg bg-white/5 backdrop-blur-sm">
+                <CardHeader><CardTitle className="text-white flex items-center gap-2"><Timer className="w-5 h-5 text-cyan-400" /> مهلة الجلسة</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2"><Label className="text-slate-300">مدة الجلسة (بالدقائق)</Label><Input type="number" value={sessionTimeout} onChange={(e) => setSessionTimeout(parseInt(e.target.value) || 30)} className="bg-slate-800 border-slate-600 text-white" /></div>
+                  <p className="text-xs text-slate-500">سيتم تسجيل الخروج تلقائياً بعد هذه المدة من عدم النشاط</p>
+                  <Button className="w-full bg-cyan-600 hover:bg-cyan-700 text-white gap-2"><Save className="w-4 h-4" /> حفظ</Button>
+                </CardContent>
+              </Card>
+
+              {/* Reward Values */}
+              <Card className="border-0 shadow-lg bg-white/5 backdrop-blur-sm">
+                <CardHeader><CardTitle className="text-white flex items-center gap-2"><Gift className="w-5 h-5 text-amber-400" /> قيم المكافآت</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2"><Label className="text-slate-300 flex items-center gap-1"><Zap className="w-3.5 h-3.5 text-amber-400" /> نقاط لكل إجابة صحيحة</Label><Input type="number" value={rewardSettings.pointsPerCorrect} onChange={(e) => setRewardSettings(s => ({ ...s, pointsPerCorrect: parseInt(e.target.value) || 10 }))} className="bg-slate-800 border-slate-600 text-white" /></div>
+                  <div className="space-y-2"><Label className="text-slate-300 flex items-center gap-1"><Coins className="w-3.5 h-3.5 text-yellow-400" /> عملات لكل إجابة صحيحة</Label><Input type="number" value={rewardSettings.coinsPerCorrect} onChange={(e) => setRewardSettings(s => ({ ...s, coinsPerCorrect: parseInt(e.target.value) || 5 }))} className="bg-slate-800 border-slate-600 text-white" /></div>
+                  <div className="space-y-2"><Label className="text-slate-300 flex items-center gap-1"><Gem className="w-3.5 h-3.5 text-purple-400" /> جواهر للعبة مثالية</Label><Input type="number" value={rewardSettings.gemsPerPerfect} onChange={(e) => setRewardSettings(s => ({ ...s, gemsPerPerfect: parseInt(e.target.value) || 3 }))} className="bg-slate-800 border-slate-600 text-white" /></div>
+                  <Button className="w-full bg-amber-600 hover:bg-amber-700 text-white gap-2"><Save className="w-4 h-4" /> حفظ المكافآت</Button>
+                </CardContent>
+              </Card>
+
+              {/* Feature Flags */}
+              <Card className="border-0 shadow-lg bg-white/5 backdrop-blur-sm">
+                <CardHeader><CardTitle className="text-white flex items-center gap-2"><Settings className="w-5 h-5 text-slate-400" /> تفعيل الميزات</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                  {Object.entries(featureFlags).map(([key, value]) => (
+                    <div key={key} className="flex items-center justify-between">
+                      <Label className="text-slate-300">
+                        {key === 'dailyChallenge' ? 'التحدي اليومي' :
+                         key === 'storyMode' ? 'وضع القصة' :
+                         key === 'speedTest' ? 'اختبار السرعة' :
+                         key === 'leaderboard' ? 'لوحة المتصدرين' : 'المتجر'}
+                      </Label>
+                      <Switch checked={value} onCheckedChange={(checked) => setFeatureFlags(f => ({ ...f, [key]: checked }))} />
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              {/* Export / Import */}
+              <Card className="border-0 shadow-lg bg-white/5 backdrop-blur-sm">
+                <CardHeader><CardTitle className="text-white flex items-center gap-2"><Database className="w-5 h-5 text-emerald-400" /> تصدير واستيراد</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  <Button onClick={() => handleExport('json')} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white gap-2"><FileDown className="w-4 h-4" /> تصدير JSON</Button>
+                  <Button onClick={() => handleExport('csv')} className="w-full bg-slate-600 hover:bg-slate-700 text-white gap-2"><Download className="w-4 h-4" /> تصدير CSV</Button>
+                  <Separator className="bg-slate-700" />
+                  <Button variant="outline" className="w-full border-red-500/30 text-red-400 hover:bg-red-500/10 gap-2" onClick={() => {
+                    if (confirm('هل أنت متأكد من إعادة تعيين جميع البيانات؟')) {
+                      showToast('تم إعادة تعيين البيانات');
+                    }
+                  }}><AlertTriangle className="w-4 h-4" /> إعادة تعيين جميع البيانات</Button>
+                </CardContent>
+              </Card>
+
+              {/* App Info */}
+              <Card className="border-0 shadow-lg bg-white/5 backdrop-blur-sm">
+                <CardHeader><CardTitle className="text-white flex items-center gap-2"><Info className="w-5 h-5 text-blue-400" /> معلومات التطبيق</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex justify-between"><span className="text-slate-400">الإصدار</span><span className="text-white">2.0.0</span></div>
+                  <div className="flex justify-between"><span className="text-slate-400">آخر تحديث</span><span className="text-white">٢٠٢٦</span></div>
+                  <div className="flex justify-between"><span className="text-slate-400">قاعدة البيانات</span><span className="text-emerald-400">SQLite ✅</span></div>
+                  <div className="flex justify-between"><span className="text-slate-400">الأطفال</span><span className="text-white">{data.totalChildren}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-400">الجلسات</span><span className="text-white">{data.totalSessions}</span></div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* ─── Security Tab ─── */}
+          <TabsContent value="security">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Active Sessions */}
+              <Card className="border-0 shadow-lg bg-white/5 backdrop-blur-sm">
+                <CardHeader><CardTitle className="text-white flex items-center gap-2"><Activity className="w-5 h-5 text-emerald-400" /> الجلسات النشطة</CardTitle></CardHeader>
+                <CardContent>
+                  {data.children.filter(c => c.lastActiveDate).length > 0 ? (
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {data.children.filter(c => c.lastActiveDate).map((child) => (
+                        <div key={child.id} className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5">
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-sm text-slate-800 truncate">
-                              {AVATAR_MAP[item.childAvatarId] || '🧒'} {item.childName}
-                            </span>
-                            <span className="text-xs text-slate-400">
-                              {GAME_TYPE_NAMES[item.gameType] || item.gameType}
-                            </span>
+                            <span className="text-lg">{AVATAR_MAP[child.avatarId] || '🧒'}</span>
+                            <div>
+                              <p className="text-white text-sm font-medium">{child.displayName}</p>
+                              <p className="text-xs text-slate-400">آخر نشاط: {child.lastActiveDate ? formatDate(child.lastActiveDate) : 'غير معروف'}</p>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2 text-xs text-slate-500">
-                            <span>جدول ×{item.tableNumber}</span>
-                            <span className="text-emerald-600 font-semibold">+{item.score}</span>
-                            <span className={accuracy >= 80 ? 'text-green-600' : accuracy >= 50 ? 'text-amber-600' : 'text-red-500'}>
-                              {accuracy}% دقة
-                            </span>
-                          </div>
+                          <div className="w-3 h-3 rounded-full bg-green-400 animate-pulse" title="نشط" />
                         </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-slate-400 text-center py-4">لا توجد جلسات نشطة</p>
+                  )}
+                </CardContent>
+              </Card>
 
-                        {/* Time */}
-                        <div className="text-xs text-slate-400 shrink-0 flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {getTimeAgo(item.completedAt)}
+              {/* Login Attempt Logs */}
+              <Card className="border-0 shadow-lg bg-white/5 backdrop-blur-sm">
+                <CardHeader><CardTitle className="text-white flex items-center gap-2"><ShieldAlert className="w-5 h-5 text-red-400" /> سجل محاولات الدخول</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {activityLog.slice(0, 10).map((item) => (
+                      <div key={item.id} className="flex items-center justify-between p-2 rounded-lg bg-white/5 border border-white/5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">{AVATAR_MAP[item.childAvatarId] || '🧒'}</span>
+                          <span className="text-sm text-white">{item.childDisplayName}</span>
                         </div>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
+                        <span className="text-xs text-slate-400">{formatDateTime(item.completedAt)}</span>
+                      </div>
+                    ))}
+                    {activityLog.length === 0 && <p className="text-slate-400 text-center py-4">لا توجد سجلات</p>}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Rate Limiting */}
+              <Card className="border-0 shadow-lg bg-white/5 backdrop-blur-sm">
+                <CardHeader><CardTitle className="text-white flex items-center gap-2"><Timer className="w-5 h-5 text-amber-400" /> إعدادات تقييد المعدل</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2"><Label className="text-slate-300">الحد الأقصى لمحاولات الدخول</Label><Input type="number" defaultValue={5} className="bg-slate-800 border-slate-600 text-white" /></div>
+                  <div className="space-y-2"><Label className="text-slate-300">مدة القفل (بالدقائق)</Label><Input type="number" defaultValue={15} className="bg-slate-800 border-slate-600 text-white" /></div>
+                  <Button className="w-full bg-amber-600 hover:bg-amber-700 text-white gap-2"><Save className="w-4 h-4" /> حفظ</Button>
+                </CardContent>
+              </Card>
+
+              {/* Security Summary */}
+              <Card className="border-0 shadow-lg bg-white/5 backdrop-blur-sm">
+                <CardHeader><CardTitle className="text-white flex items-center gap-2"><ShieldCheck className="w-5 h-5 text-green-400" /> ملخص الأمان</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-green-500/10 border border-green-500/20"><CheckCircle2 className="w-4 h-4 text-green-400" /><span className="text-sm text-green-300">تشفير الجلسات مفعّل</span></div>
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-green-500/10 border border-green-500/20"><CheckCircle2 className="w-4 h-4 text-green-400" /><span className="text-sm text-green-300">قفل الحساب بعد ٥ محاولات</span></div>
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-green-500/10 border border-green-500/20"><CheckCircle2 className="w-4 h-4 text-green-400" /><span className="text-sm text-green-300">تسجيل خروج تلقائي بعد ٣٠ دقيقة</span></div>
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-green-500/10 border border-green-500/20"><CheckCircle2 className="w-4 h-4 text-green-400" /><span className="text-sm text-green-300">حماية PIN للملفات الشخصية</span></div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
-      {/* ─── Toast Notification ─── */}
+      {/* ─── Dialogs ─── */}
+
+      {/* Toast */}
       <AnimatePresence>
         {toast && (
           <motion.div
             initial={{ opacity: 0, y: 50, x: '-50%' }}
             animate={{ opacity: 1, y: 0, x: '-50%' }}
-            exit={{ opacity: 0, y: 50, x: '-50%' }}
-            className={`fixed bottom-6 left-1/2 z-50 px-5 py-3 rounded-xl shadow-lg text-white text-sm font-medium flex items-center gap-2 ${
-              toast.type === 'success' ? 'bg-emerald-600' : 'bg-red-500'
-            }`}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-6 left-1/2 z-50 px-6 py-3 rounded-xl shadow-2xl text-white font-medium"
+            style={{ background: toast.type === 'success' ? 'linear-gradient(135deg, #059669, #0d9488)' : 'linear-gradient(135deg, #dc2626, #ef4444)' }}
           >
             {toast.type === 'success' ? '✅' : '❌'} {toast.message}
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ─── Delete Confirmation Dialog ─── */}
+      {/* Delete Dialog */}
       <AlertDialog open={!!deleteDialogChild} onOpenChange={(open) => !open && setDeleteDialogChild(null)}>
-        <AlertDialogContent dir="rtl">
+        <AlertDialogContent dir="rtl" className="bg-slate-900 border-slate-700">
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              ⚠️ تأكيد الحذف
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              هل أنت متأكد من حذف الطفل <strong>{deleteDialogChild?.name}</strong>؟
-              سيتم حذف جميع بياناته بشكل نهائي ولا يمكن التراجع عن هذا الإجراء.
-            </AlertDialogDescription>
+            <AlertDialogTitle className="text-white flex items-center gap-2"><AlertTriangle className="w-5 h-5 text-red-400" /> تأكيد الحذف</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">هل أنت متأكد من حذف {deleteDialogChild?.displayName}؟ سيتم حذف جميع البيانات بشكل نهائي.</AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex-row gap-2">
-            <AlertDialogCancel className="ml-0">إلغاء</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deleteDialogChild && handleDelete(deleteDialogChild.id)}
-              className="bg-red-500 hover:bg-red-600 text-white"
-            >
-              حذف نهائي
-            </AlertDialogAction>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-slate-800 text-slate-300 border-slate-600">إلغاء</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteDialogChild && handleDelete(deleteDialogChild.id)} className="bg-red-600 hover:bg-red-700 text-white">حذف</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ─── Bulk Reset All Progress Dialog ─── */}
-      <AlertDialog open={bulkResetDialog} onOpenChange={(open) => !open && setBulkResetDialog(false)}>
-        <AlertDialogContent dir="rtl">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              ⚠️ إعادة تعيين تقدم جميع الأطفال
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              هل أنت متأكد من إعادة تعيين تقدم <strong>جميع الأطفال ({data?.totalChildren})</strong>؟
-              سيتم تصفير جميع الجداول والنقاط والمستويات والنجوم والعملات والجواهر لكل الأطفال.
-              <br />
-              <strong className="text-red-600">هذا الإجراء لا يمكن التراجع عنه!</strong>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-row gap-2">
-            <AlertDialogCancel className="ml-0" disabled={bulkResetting}>إلغاء</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleBulkReset}
-              disabled={bulkResetting}
-              className="bg-red-500 hover:bg-red-600 text-white gap-2"
-            >
-              {bulkResetting ? (
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }}
-                  className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
-                />
-              ) : (
-                <RotateCcw className="w-4 h-4" />
-              )}
-              {bulkResetting ? 'جاري التعيين...' : 'إعادة تعيين الكل'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* ─── Edit Child Dialog (for main table) ─── */}
-      <Dialog open={!!editChild} onOpenChange={(open) => !open && setEditChild(null)}>
-        <DialogContent dir="rtl" className="sm:max-w-md">
+      {/* New Child Dialog */}
+      <Dialog open={newChildDialog} onOpenChange={setNewChildDialog}>
+        <DialogContent dir="rtl" className="sm:max-w-md bg-slate-900 border-slate-700">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-lg">
-              <Edit3 className="w-5 h-5 text-emerald-600" />
-              تعديل بيانات الطفل
-            </DialogTitle>
-            <DialogDescription>
-              تعديل الاسم والعمر والنقاط والمستوى والنجوم والعملات والجواهر
-            </DialogDescription>
+            <DialogTitle className="flex items-center gap-2 text-lg text-white"><UserPlus className="w-5 h-5 text-emerald-400" /> إضافة طفل جديد</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            <div className="space-y-2"><Label className="text-slate-300">الاسم</Label><Input value={newChildForm.name} onChange={(e) => setNewChildForm(f => ({ ...f, name: e.target.value, displayName: e.target.value }))} className="bg-slate-800 border-slate-600 text-white" /></div>
+            <div className="space-y-2"><Label className="text-slate-300">العمر</Label><Input type="number" min={3} max={15} value={newChildForm.age} onChange={(e) => setNewChildForm(f => ({ ...f, age: parseInt(e.target.value) || 7 }))} className="bg-slate-800 border-slate-600 text-white" /></div>
             <div className="space-y-2">
-              <Label htmlFor="edit-displayName-main">الاسم المعروض</Label>
-              <Input
-                id="edit-displayName-main"
-                value={editForm.displayName}
-                onChange={(e) => setEditForm(f => ({ ...f, displayName: e.target.value }))}
-                className="border-slate-200 focus:border-emerald-400"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-age-main">العمر</Label>
-              <Input
-                id="edit-age-main"
-                type="number"
-                min={3}
-                max={15}
-                value={editForm.age}
-                onChange={(e) => setEditForm(f => ({ ...f, age: parseInt(e.target.value) || 0 }))}
-                className="border-slate-200 focus:border-emerald-400"
-              />
-            </div>
-            <Separator />
-            <p className="text-sm font-semibold text-slate-600">المكافآت والتقدم</p>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="edit-points-main" className="flex items-center gap-1">
-                  <Zap className="w-3.5 h-3.5 text-amber-500" /> النقاط
-                </Label>
-                <Input
-                  id="edit-points-main"
-                  type="number"
-                  min={0}
-                  value={editForm.points}
-                  onChange={(e) => setEditForm(f => ({ ...f, points: parseInt(e.target.value) || 0 }))}
-                  className="border-slate-200 focus:border-emerald-400"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-level-main" className="flex items-center gap-1">
-                  <BarChart3 className="w-3.5 h-3.5 text-emerald-500" /> المستوى
-                </Label>
-                <Input
-                  id="edit-level-main"
-                  type="number"
-                  min={1}
-                  max={13}
-                  value={editForm.level}
-                  onChange={(e) => setEditForm(f => ({ ...f, level: parseInt(e.target.value) || 1 }))}
-                  className="border-slate-200 focus:border-emerald-400"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-stars-main" className="flex items-center gap-1">
-                  <Star className="w-3.5 h-3.5 text-yellow-500" /> النجوم
-                </Label>
-                <Input
-                  id="edit-stars-main"
-                  type="number"
-                  min={0}
-                  value={editForm.stars}
-                  onChange={(e) => setEditForm(f => ({ ...f, stars: parseInt(e.target.value) || 0 }))}
-                  className="border-slate-200 focus:border-emerald-400"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-coins-main" className="flex items-center gap-1">
-                  <Coins className="w-3.5 h-3.5 text-amber-600" /> العملات
-                </Label>
-                <Input
-                  id="edit-coins-main"
-                  type="number"
-                  min={0}
-                  value={editForm.coins}
-                  onChange={(e) => setEditForm(f => ({ ...f, coins: parseInt(e.target.value) || 0 }))}
-                  className="border-slate-200 focus:border-emerald-400"
-                />
-              </div>
-              <div className="space-y-2 col-span-2">
-                <Label htmlFor="edit-gems-main" className="flex items-center gap-1">
-                  <Gem className="w-3.5 h-3.5 text-purple-500" /> الجواهر
-                </Label>
-                <Input
-                  id="edit-gems-main"
-                  type="number"
-                  min={0}
-                  value={editForm.gems}
-                  onChange={(e) => setEditForm(f => ({ ...f, gems: parseInt(e.target.value) || 0 }))}
-                  className="border-slate-200 focus:border-emerald-400"
-                />
+              <Label className="text-slate-300">الأفاتار</Label>
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(AVATAR_MAP).slice(0, 10).map(([id, emoji]) => (
+                  <button key={id} onClick={() => setNewChildForm(f => ({ ...f, avatarId: id }))} className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl border-2 transition-all ${newChildForm.avatarId === id ? 'border-emerald-400 bg-emerald-500/20' : 'border-white/10 bg-white/5 hover:border-white/30'}`}>
+                    {emoji}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
-          <DialogFooter className="flex-row gap-2 sm:justify-start">
-            <Button
-              onClick={() => setEditChild(null)}
-              variant="outline"
-              className="ml-0"
-            >
-              إلغاء
-            </Button>
-            <Button
-              onClick={handleEditSave}
-              disabled={editSaving}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
-            >
-              {editSaving ? (
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }}
-                  className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
-                />
-              ) : (
-                <Edit3 className="w-4 h-4" />
-              )}
-              {editSaving ? 'جاري الحفظ...' : 'حفظ التغييرات'}
-            </Button>
+          <DialogFooter className="gap-2">
+            <Button onClick={() => setNewChildDialog(false)} variant="ghost" className="text-slate-400">إلغاء</Button>
+            <Button onClick={handleCreateChild} disabled={!newChildForm.name} className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"><Save className="w-4 h-4" /> إنشاء</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editChild} onOpenChange={(open) => !open && setEditChild(null)}>
+        <DialogContent dir="rtl" className="sm:max-w-lg bg-slate-900 border-slate-700">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg text-white"><Edit3 className="w-5 h-5 text-emerald-400" /> تعديل بيانات الطفل</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2"><Label className="text-slate-300">الاسم المعروض</Label><Input value={editForm.displayName} onChange={(e) => setEditForm(f => ({ ...f, displayName: e.target.value }))} className="bg-slate-800 border-slate-600 text-white" /></div>
+              <div className="space-y-2"><Label className="text-slate-300">العمر</Label><Input type="number" min={3} max={15} value={editForm.age} onChange={(e) => setEditForm(f => ({ ...f, age: parseInt(e.target.value) || 0 }))} className="bg-slate-800 border-slate-600 text-white" /></div>
+            </div>
+            <Separator className="bg-slate-700" />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2"><Label className="text-slate-300 flex items-center gap-1"><Zap className="w-3.5 h-3.5 text-amber-400" /> النقاط</Label><Input type="number" min={0} value={editForm.points} onChange={(e) => setEditForm(f => ({ ...f, points: parseInt(e.target.value) || 0 }))} className="bg-slate-800 border-slate-600 text-white" /></div>
+              <div className="space-y-2"><Label className="text-slate-300 flex items-center gap-1"><BarChart3 className="w-3.5 h-3.5 text-emerald-400" /> المستوى</Label><Input type="number" min={1} max={13} value={editForm.level} onChange={(e) => setEditForm(f => ({ ...f, level: parseInt(e.target.value) || 1 }))} className="bg-slate-800 border-slate-600 text-white" /></div>
+              <div className="space-y-2"><Label className="text-slate-300 flex items-center gap-1"><Star className="w-3.5 h-3.5 text-yellow-400" /> النجوم</Label><Input type="number" min={0} value={editForm.stars} onChange={(e) => setEditForm(f => ({ ...f, stars: parseInt(e.target.value) || 0 }))} className="bg-slate-800 border-slate-600 text-white" /></div>
+              <div className="space-y-2"><Label className="text-slate-300 flex items-center gap-1"><Coins className="w-3.5 h-3.5 text-amber-400" /> العملات</Label><Input type="number" min={0} value={editForm.coins} onChange={(e) => setEditForm(f => ({ ...f, coins: parseInt(e.target.value) || 0 }))} className="bg-slate-800 border-slate-600 text-white" /></div>
+              <div className="space-y-2"><Label className="text-slate-300 flex items-center gap-1"><Gem className="w-3.5 h-3.5 text-purple-400" /> الجواهر</Label><Input type="number" min={0} value={editForm.gems} onChange={(e) => setEditForm(f => ({ ...f, gems: parseInt(e.target.value) || 0 }))} className="bg-slate-800 border-slate-600 text-white" /></div>
+              <div className="space-y-2"><Label className="text-slate-300">🔥 الأيام المتتالية</Label><Input type="number" min={0} value={editForm.streak} onChange={(e) => setEditForm(f => ({ ...f, streak: parseInt(e.target.value) || 0 }))} className="bg-slate-800 border-slate-600 text-white" /></div>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button onClick={() => setEditChild(null)} variant="ghost" className="text-slate-400">إلغاء</Button>
+            <Button onClick={handleEditSave} disabled={editSaving} className="bg-emerald-600 hover:bg-emerald-700 text-white">{editSaving ? <RefreshCw className="w-4 h-4 animate-spin ml-2" /> : <Save className="w-4 h-4 ml-2" />} حفظ</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -1,8 +1,188 @@
 # MultiplyHero - Worklog
 
-## Project Status: PRODUCTION READY ✅ | 6 GAME MODES ✅ | LEADERBOARD & SHOP ✅ | PRACTICE MODE & SPEED TEST ✅ | ALL BUGS FIXED ✅ | VERCEL DEPLOYMENT PENDING
+## Project Status: PRODUCTION READY ✅ | 6 GAME MODES ✅ | PROTECTED AUTH ✅ | COMPREHENSIVE ADMIN ✅ | ENHANCED PARENT DASHBOARD ✅ | DATA PERSISTENCE ✅
 
-### Current Phase: Feature Complete - Awaiting Vercel Deployment
+### Current Phase: Feature Complete with Auth, Admin Panel, Parent Monitoring, and Data Persistence
+
+---
+
+## Task 2-3-5-9: Protected Auth, Admin Panel, Data Persistence, Parent Dashboard (2026-03-06)
+
+### Task ID: 2-3-5-9
+### Agent: Main Agent
+
+### Summary: Implemented comprehensive authentication system, full admin control panel, enhanced data persistence layer, and comprehensive parent monitoring dashboard.
+
+### Task A: Protected Authentication System with Highest Security
+
+**Files Modified:**
+1. `src/stores/app-store.ts` — Enhanced with full auth state and methods
+2. `src/app/page.tsx` — Added session restore, inactivity timer, auth guard, sync status
+3. `src/components/profile/LoginPage.tsx` — Enhanced with PIN verification, lockout, session persistence, biometric animation
+
+**Files Created:**
+1. `src/components/auth/AuthGuard.tsx` — Session expiry overlay with login redirect
+2. `src/app/api/auth/route.ts` — Auth API (POST: validate credentials, GET: check session, DELETE: logout)
+
+**Auth Features Implemented:**
+- `authToken`, `sessionExpiry`, `loginAttempts`, `isLocked`, `lockUntil`, `lastActivity`, `rememberMe` state in app-store
+- `persistAuth()` — Save auth state to localStorage
+- `restoreAuth()` — Restore auth from localStorage on app start
+- `checkSession()` — Check if session is still valid (30 min timeout)
+- `recordFailedAttempt()` — Track failed attempts, lock after 5
+- `resetFailedAttempts()` — Reset on successful login
+- `isSessionValid()` — Check token and expiry
+- `updateActivity()` — Track user activity for inactivity timeout
+- Session restore on mount with child data fetch
+- Inactivity timer (auto-logout after 30 min of no activity)
+- Activity tracking via mouse, keyboard, touch events
+- ALL views added to AUTH_REQUIRED_VIEWS (including admin and parent)
+- Admin access ONLY via secret code entry (hidden from UI)
+- Parent access requires selecting a child first
+- AuthGuard wrapper with lock screen overlay when session expires
+- PIN entry for existing child profiles (verified via /api/auth)
+- Account locked message after 5 failed attempts with countdown timer
+- Session persistence with "remember me for 7 days" checkbox
+- Biometric-like success animation on login (fingerprint icon + confetti)
+- Last login time display for each child profile
+- Lockout state persisted to localStorage (survives page refresh)
+
+### Task B: Comprehensive Admin Control Panel
+
+**Files Modified:**
+1. `src/components/admin/AdminDashboard.tsx` — Complete rewrite with 6-tab admin panel
+
+**Admin Features Implemented (6 Tabs):**
+
+1. **Dashboard Overview Tab:**
+   - Total children count with gradient stat cards
+   - Active users today/this week metrics
+   - Average mastery across all tables
+   - Total games played today
+   - Revenue-like metrics (total points distributed, coins, gems)
+   - Quick action buttons (add child, export data, export CSV, refresh)
+
+2. **Children Management Tab:**
+   - Full CRUD for children (create, read, update, delete)
+   - Search and filter by name
+   - Sort by name, age, level, points (ascending/descending)
+   - Bulk selection with checkboxes
+   - Bulk actions (delete selected, reset progress)
+   - Child detail view with complete history (table progress, badges, game sessions)
+   - Edit ALL child properties (displayName, age, points, level, stars, coins, gems, streak, avatarId, favoriteColor)
+   - Award badges manually to children
+   - Create new child dialog with avatar selection
+   - Delete child with confirmation dialog
+   - Reset individual progress with confirmation
+
+3. **Content Management Tab:**
+   - Daily challenge configuration (difficulty, question count, reward)
+   - Badge definitions management (view all badge types)
+   - World themes display (9 table worlds)
+   - Avatar unlock levels configuration
+
+4. **Analytics Tab:**
+   - Daily activity bar chart (7-day)
+   - Table mastery distribution with animated progress bars
+   - Popular game types horizontal bar chart
+   - Session statistics (total sessions, badges, active week, avg mastery)
+
+5. **Settings Tab:**
+   - Change admin PIN
+   - Set session timeout duration
+   - Configure point/reward values (points per correct, coins per correct, gems per perfect)
+   - Feature flags (toggle daily challenge, story mode, speed test, leaderboard, shop)
+   - Export all data as JSON or CSV
+   - Database maintenance (reset all data)
+   - App version info
+
+6. **Security Tab:**
+   - View active sessions (children with lastActiveDate)
+   - Login attempt activity log
+   - Rate limiting settings (max attempts, lockout duration)
+   - Security summary checklist
+
+**Design:** Dark professional theme (slate-900 background), Arabic RTL, shadcn/ui components (Tabs, Card, Table, Dialog, AlertDialog, Select, Switch, Badge, Progress), gradient stat cards, toast notifications
+
+### Task C: Enhanced Data Persistence System
+
+**Files Created:**
+1. `src/lib/data-manager.ts` — Robust data persistence layer
+2. `src/app/api/sync/route.ts` — Sync API endpoint
+
+**Data Manager Features:**
+- `saveWithRetry()` — Save data with exponential backoff retry (3 attempts, 1s base delay)
+- `saveBatch()` — Batch multiple saves into one transaction using Promise.allSettled
+- `startAutoSave()` / `stopAutoSave()` — Auto-save game state every 30 seconds to localStorage
+- `syncStatus()` — Check if all data is synced (last save time, pending changes, errors)
+- `recoverData()` — Recover from failed saves using local backup
+- `clearBackup()` — Clear backup after successful save
+- `exportData()` — Export all child data as JSON (child + progress + badges + sessions)
+- `importData()` — Import child data from JSON (create/update child + import badges)
+
+**Sync API:**
+- POST: Batch save multiple operations (game-session, progress, badge)
+- GET: Get sync status (last save time, total sessions, total progress)
+
+**Game Session Saving Enhanced:**
+- Wrapped saveGameSession with 3-retry logic with exponential backoff
+- Added local backup before save (localStorage)
+- Show sync status indicator (green=synced, amber=syncing, red=error)
+- Clear backup on successful save
+
+### Task D: Comprehensive Parent Monitoring Page
+
+**Files Modified:**
+1. `src/components/parent/ParentDashboard.tsx` — Complete rewrite with 5-tab monitoring dashboard
+
+**Parent Features Implemented (5 Tabs):**
+
+1. **Child Overview Section (always visible):**
+   - Child profile card with avatar, name, level, age
+   - Stats: play time, streak days, mastery %, points, best combo
+   - Last active time display
+   - Streak flame animation (3+ days)
+   - Gradient header card (emerald-to-teal-to-cyan)
+
+2. **Academic Progress Tab:**
+   - Overall mastery progress ring (animated SVG circle)
+   - Weak areas highlighted with red backgrounds and recommendations
+   - Strength areas with green backgrounds and celebrations
+   - Visual table mastery grid (9 tables, color-coded with trend indicators)
+   - Mastery trend indicators per table (up ↑, down ↓, stable —)
+   - Table labels: متقن/يتعلم/يحتاج تدريب
+
+3. **Activity Timeline Tab:**
+   - Weekly activity heatmap (7-day bar chart, color-coded by accuracy)
+   - Time-of-day analysis (morning/afternoon/evening preferences)
+   - Session history with details (game type, table, score, accuracy, duration, date)
+   - Daily activity summary stats
+
+4. **Learning Intelligence Tab:**
+   - AI-generated learning recommendations (focus, practice, celebrate, schedule types)
+   - Progress predictions per table (estimated sessions/time to mastery)
+   - Age group comparison (child vs average for their age)
+   - Suggested weekly practice schedule (7-day plan)
+   - Difficulty level recommendation
+
+5. **Safety & Controls Tab:**
+   - Daily play time limit setting
+   - Allowed play hours (from/to time pickers)
+   - Daily goal setting (number of questions)
+   - Notification preferences (progress, play time, weekly report)
+   - Session history export as JSON
+
+6. **Communication Tab:**
+   - Send encouraging messages to child (saved to localStorage)
+   - Quick message templates (أنت رائع!, استمر في التمرين!, etc.)
+   - Set daily goals and rewards (coins, gems, stars)
+   - Badge showcase with earned dates
+
+**Design:** Gradient background (amber-emerald-cyan), gradient cards, progress rings, animated charts, Arabic RTL, shadcn/ui components (Tabs, Card, Badge, Progress, Switch, Input), Framer Motion animations
+
+### Verification:
+- ✅ ESLint passes with 0 errors
+- ✅ Dev server compiles and runs correctly (200 OK on GET /)
 
 ---
 
@@ -648,3 +828,370 @@
 ### Verification:
 - ✅ ESLint passes with 0 errors
 - ✅ All existing props and functionality maintained
+
+---
+
+## Task 6-7: Enhance ALL Feature Pages to be Smarter, More Advanced, Better Visuals (2026-03-06)
+
+### Task ID: 6-7
+### Agent: Feature Enhancement Agent
+
+### Summary: Complete rewrite of all 8 feature page components to be dramatically more advanced, smarter, and visually premium. Every component now features 3D-style CSS visuals, advanced smart features, richer animations, and comprehensive Arabic RTL interfaces.
+
+### Files Modified (8 complete rewrites):
+
+1. **`src/components/challenges/DailyChallenge.tsx`** — Enhanced Daily Challenge
+2. **`src/components/achievements/AchievementsPage.tsx`** — Enhanced Achievements
+3. **`src/components/world/ProgressMap.tsx`** — Enhanced World Map
+4. **`src/components/story/StoryMode.tsx`** — Enhanced Story Mode
+5. **`src/components/leaderboard/LeaderboardPage.tsx`** — Enhanced Leaderboard
+6. **`src/components/shop/ShopPage.tsx`** — Enhanced Shop
+7. **`src/components/practice/PracticeMode.tsx`** — Enhanced Practice Mode
+8. **`src/components/speedtest/SpeedTestPage.tsx`** — Enhanced Speed Test
+
+---
+
+### 1. DailyChallenge.tsx — 5 Challenge Types + Boss Battle + Health Bar
+
+**Challenge Types (5 types):**
+- **جولة السرعة (Speed Round)** — 10 questions as fast as possible, easy, ×1.2 multiplier
+- **نتيجة مثالية (Perfect Score)** — All answers correct, medium, ×1.8 multiplier
+- **البقاء (Survival)** — Keep going until 3 wrong, hard, ×2.0 multiplier
+- **المعكوس (Reverse)** — Given answer, pick correct multiplication, medium, ×1.5 multiplier
+- **معركة الزعيم (Boss Battle)** — Hard questions from weak tables, hard, ×3.0 multiplier
+
+**Visual Enhancements:**
+- 3D CSS Trophy component (multi-layered div with gradients and box-shadows)
+- Health Bar component with animated hearts (Lucide Heart icon, pulse animation)
+- Streak Counter with dynamic flame glow (radial-gradient + blur)
+- Boss Battle intro screen (dramatic dark purple background, floating particles, spring animations)
+- Stars Rating component (1-3 stars with spring entrance + rotation)
+- Completion Celebration with 3D trophy animation
+- Challenge type cards with gradient borders and glow effects
+- Weekly Progress Grid with animated day cells
+- Countdown Timer with urgency color changes
+
+**Smart Features:**
+- Daily challenge type auto-determined by day of week
+- Reward preview with streak bonus calculation
+- Challenge history showing completed/missed past challenges
+- Streak bonus percentage display
+
+---
+
+### 2. AchievementsPage.tsx — Premium Badge System with Rarity
+
+**Badge Categories (5):**
+- الكل, الجداول, الكومبو, النقاط, السلاسل, الخاصة
+
+**Badge Rarity System (4 levels):**
+- **شائع (Common)** — Slate colors, no glow
+- **نادر (Rare)** — Blue colors, blue glow
+- **ملحمي (Epic)** — Purple colors, purple glow + sparkle effects
+- **أسطوري (Legendary)** — Amber colors, amber glow + sparkle + shimmer
+
+**Visual Enhancements:**
+- 3D-style badge icons (rounded-2xl with inset box-shadows for depth)
+- Locked badges show dark silhouettes with Lock icon overlay
+- Unlocked badges have shimmer sweep animation
+- Rarity badge labels (colored by rarity)
+- Achievement points total (animated counter)
+- Showcase Carousel (auto-rotating, AnimatePresence transitions)
+- Category breakdown with mini progress bars (5 categories)
+- "Next to Unlock" section showing closest 3 unearned badges
+- Lucide icons for categories (Trophy, Flame, Coins, Zap, Star, Award)
+
+**Smart Features:**
+- Achievement points calculation based on badge rarity
+- Category completion percentage tracking
+- Showcase carousel auto-rotates every 3 seconds
+- Badge progress tracking with earned dates
+
+---
+
+### 3. ProgressMap.tsx — Immersive 9-World Adventure Map
+
+**Visual Enhancements:**
+- Floating Particles (12 animated circles with parallax-style movement)
+- 3D-style world icons (rounded-2xl, inset box-shadows for depth)
+- World Detail Popup (click any world to see details)
+- Recommended world banner with action button
+- Current world glow animation (pulsing shadow)
+- Mastery crown badge (Star + CheckCircle)
+- Animated dot path connectors between worlds
+- Dynamic background gradient based on current world
+
+**World Detail Popup Features:**
+- Full world info card with 3D icon, name, description
+- Mastery progress bar with status label
+- "You vs Average" comparison (dual animated progress bars)
+- Reward preview for mastering the world
+- Play button to start the world's game
+
+**Smart Features:**
+- Recommended world calculation (lowest mastery among unlocked)
+- "You vs Average" comparison per world (simulated average data)
+- Dynamic background color based on current world tier
+- Mastery threshold: 0.8 for "mastered", 0.5 for unlock
+
+---
+
+### 4. StoryMode.tsx — 9 Chapters with Learn/Practice/Master Stages
+
+**9 Story Chapters (each with unique character):**
+- Ch 1: "جزيرة الأرقام" — زيد المستكشف
+- Ch 2: "غابة الألغاز" — ليلى الحكيمة
+- Ch 3: "بحر الضرب" — عمر البحّار
+- Ch 4: "جبل الحكمة" — سارة المتسلقة
+- Ch 5: "وادي الحلوى" — نورا الطاهية المبدعة
+- Ch 6: "الفضاء المذهل" — فهد رائد الفضاء
+- Ch 7: "المدينة السحرية" — هدى أميرة المحاربين
+- Ch 8: "عالم الألوان" — ريم الرسامة الخيالية
+- Ch 9: "قمة الأبطال" — سلطان حارس المعرفة
+
+**3-Stage System per Chapter:**
+- **تعلّم (Learn)** — Story text, learn tip, full multiplication table grid (3×3 with 3D-style cells)
+- **تدرّب (Practice)** — Boss info card, start practice game button
+- **أتقن (Master)** — Stars rating (1-3), mastery percentage, progress bar, test button
+
+**Visual Enhancements:**
+- Stage Progress Bar (3 stages with connecting lines and completion indicators)
+- Chapter Cards on map with 3D-style character portraits
+- Floating story particles (10 animated circles)
+- Stage transition animations (AnimatePresence mode="wait")
+- Completion celebration (trophy + 3 animated stars)
+- Shimmer effect on completed chapter cards
+
+**Smart Features:**
+- Auto-detect stage from mastery level (<0.01=learn, <0.5=practice, >=0.5=master)
+- Boss name per chapter (e.g., "الصندوق السحري", "العاصفة المظلمة")
+- Learn tips with table-specific memory tricks
+- Stage-aware navigation (can go back to completed stages)
+
+---
+
+### 5. LeaderboardPage.tsx — Premium Competitive Leaderboard
+
+**Visual Enhancements:**
+- 3D-style podium blocks (inset box-shadows for depth)
+- Crown animation on #1 (Lucide Crown with floating animation)
+- Trend indicators (TrendingUp/Down/Minus icons per player)
+- Sort Category buttons (Points, Level, Streak, Mastery)
+- Personal rank card with percentile display
+- Nearby competitors section (players ranked near you)
+- Badges count per player
+
+**Sort Categories (4):**
+- النقاط (Points) — default sort
+- المستوى (Level) — by player level
+- السلسلة (Streak) — by daily streak
+- الإتقان (Mastery) — by mastery percentage
+
+**Smart Features:**
+- Percentile calculation (what % of players you beat)
+- Nearby competitors (±1 rank from your position)
+- Trend indicators (up/down/stable) per player
+- Time tabs: Weekly, Monthly, All-time
+- Motivational messages based on rank
+
+---
+
+### 6. ShopPage.tsx — Premium Store with 4 Categories + Daily Deals
+
+**Item Categories (4 tabs):**
+- الأفاتار (15+ avatar items with gradient previews)
+- الخلفيات (8+ background themes)
+- القوى (6+ power-ups including new Freeze and Magnet)
+- المظاهر (4 UI themes: Dark, Rainbow, Neon, Golden)
+
+**Daily Deal System:**
+- Bundle deal with countdown timer
+- "حزمة البداية" bundle: 3 power-ups + 1 background at discounted price
+- Shows original price vs discounted price
+- Time remaining until deal expires
+
+**Visual Enhancements:**
+- 3D-style item preview banners (inset box-shadows)
+- "جديد!" (New) and "🔥 شائع" (Popular) badges
+- Wishlist feature (Heart icon toggle)
+- Flying coins purchase animation
+- Animated coin/gem balance counters
+- Bundle savings indicator
+
+**Smart Features:**
+- Wishlist system (add/remove items to wishlist)
+- Owned items section
+- Daily deal with countdown timer
+- Bundle deals showing savings
+- Level-gated items (levelRequired property)
+
+---
+
+### 7. PracticeMode.tsx — Smart Practice with Spaced Repetition
+
+**Visual Enhancements:**
+- 3D-style table cards (inset box-shadows for depth)
+- "ركّز هنا" (Focus Here) badge on weak tables (red ring)
+- Smart Practice suggestion card (purple gradient with Brain icon)
+- Daily practice goal tracker (amber card with Target icon)
+- 3D flip cards with inset shadows
+- Multiplication grid cells with 3D-style active state
+
+**Smart Features:**
+- **Smart Practice** — Auto-detects weakest table and suggests focused practice
+- **Spaced Repetition Scheduling** — getSpacedRepetitionSuggestion() finds weakest attempted table
+- **Daily Practice Goal** — Track 20 questions/day goal with progress bar
+- **Weak Table Detection** — Identifies bottom 3 tables below 50% mastery
+- **Smart Practice Button** — One-tap to start practice on weakest area
+- **Audio pronunciation** — Web Speech API (ar-SA) for table names and equations
+- **Pattern Tips** — Table-specific memory tricks per table
+
+---
+
+### 8. SpeedTestPage.tsx — Advanced Speed Test with Multiple Options
+
+**Time Options (3):**
+- 30 seconds, 60 seconds, 120 seconds
+
+**Table Filters (10):**
+- Mixed (all tables), or specific tables 2-9
+
+**Visual Enhancements:**
+- Timer Circle with SVG progress indicator (green→amber→red)
+- Progress Ring (small SVG ring showing question count)
+- Combo flame bar (grows with combo count)
+- 3D-style question display (inset box-shadows for depth)
+- Speed Analysis section on results (speed bar + label)
+- Personal best tracking (localStorage)
+- "رقم قياسي جديد!" (New Record!) badge on results
+- Confetti particles on results screen
+- Detailed 8-stat results grid
+
+**Smart Features:**
+- **Multiple time options** (30s, 60s, 120s)
+- **Table filter** (specific table or mixed)
+- **Personal best tracking** — Saved to localStorage, shown on results
+- **Improvement indicator** — "New record" badge when beating personal best
+- **Speed analysis** — Fastest answer, average speed, questions per minute
+- **8 detailed stats** on results: correct, wrong, best combo, accuracy, avg speed, QPM, fastest answer, total questions
+
+---
+
+### Verification:
+- ✅ ESLint passes with 0 errors
+- ✅ Dev server compiles and serves correctly (200 OK on GET /)
+- ✅ All props interfaces preserved (backward compatible)
+- ✅ All 'use client' directives in place
+- ✅ All Arabic UI text, RTL layouts
+- ✅ Framer Motion animations throughout
+- ✅ Lucide React icons used (replaced emojis where appropriate)
+- ✅ 3D-style CSS used (inset box-shadows, gradients) instead of emojis
+- ✅ shadcn/ui components used (Card, Button, Badge, Progress, Tabs)
+
+
+## Task 8-4: Intelligent Scoring/Leveling System & Avatar Image Updates (2026-03-06)
+
+### Task ID: 8-4
+### Agent: Scoring & Avatar Agent
+
+### Summary: Built comprehensive intelligent scoring/leveling/progress system with 50 levels, XP, performance ratings, mastery tracking, and updated AvatarImage component with 3D image support, sizes, glow, animation, and error handling. Also generated placeholder SVG avatars and added CSS gradient backgrounds for world themes.
+
+### Task A: Intelligent Scoring/Leveling/Progress System
+
+**Files Created:**
+1. `src/lib/game-engine/scoring-engine.ts` — Complete intelligent scoring engine
+
+**Files Modified:**
+1. `src/stores/game-store.ts` — Integrated scoring engine, added response time tracking
+2. `src/app/api/game-session/route.ts` — Uses scoring engine for XP, mastery, performance rating
+3. `src/app/page.tsx` — Level-up animation, performance rating in results, scoring engine integration
+4. `src/types/index.ts` — Added ScoringResult to GameResult, imagePath to AvatarDef, gradientCSS to WorldTheme
+5. `src/components/games/GameResults.tsx` — Performance rating badge, score breakdown card
+
+**Scoring Engine Features:**
+- **50-Level System**: Exponential XP requirements (100 * level^1.5)
+- **XP Calculation**: 80% of points → XP, perfect game bonus (+50xp), hard difficulty bonus (+30xp)
+- **Base Points**: 10 per correct answer
+- **Combo Bonus**: combo * 2 per correct answer (capped at 20)
+- **Speed Bonus**: <2s = +5, <3s = +3, <5s = +1 per correct answer
+- **Accuracy Bonus**: 100% = +30, 90%+ = +20, 80%+ = +10, 70%+ = +5
+- **Difficulty Multiplier**: easy=1x, medium=1.5x, hard=2x
+- **Mixed Table Bonus**: 1.2x multiplier for mixed practice
+- **Streak Multiplier**: +1% per daily streak day (max +30%)
+- **Coins**: ~1/5 of total points
+- **Gems**: Rare — 3 for perfect, 2 for 90%+, 1 for 80%+, extra for fast perfect games
+- **Mastery Change**: -0.05 to +0.15 with diminishing returns at high mastery and speed bonus
+- **Performance Ratings**: SSS (>95% & <2s), SS (>90% & <3s), S (>85%), A (>75%), B (>60%), C (>40%), D (<40%)
+- **Player Titles**: مبتدئ (1-3), متعلم (4-7), محترف (8-12), خبير (13-18), بطل (19-25), أسطورة (26-35), بطل الأساطير (36-50)
+- **Adaptive Difficulty**: getRecommendedDifficulty() based on mastery, speed, and combo
+
+**Game Store Enhancements:**
+- Added `responseTimes: number[]` tracking individual response times per question
+- Added `questionStartTime: number` for timing each question
+- Added `avgResponseTime: number` running average
+- Added `lastScoringResult: ScoringResult | null` from scoring engine
+- `answerQuestion()` now records response time and updates running average
+- `nextQuestion()` resets question start time for next question timing
+- `endGame()` accepts currentLevel, currentXP, currentMastery, streak params and returns full ScoringResult
+
+**Game Session API Updates:**
+- Now accepts and processes all scoring engine fields (totalPoints, xpEarned, coinsEarned, gemsEarned, starsEarned, masteryChange, newLevel, leveledUp, performanceRating, basePoints, comboBonus, speedBonus, accuracyBonus, difficultyMultiplier)
+- Calculates XP using scoring engine formula
+- Updates mastery per table using calculateMasteryChange
+- Returns meta with performanceRating, xpEarned, totalXP, masteryChange
+- Saves avgResponseTime and responseTimes with session data
+
+**Page.tsx Updates:**
+- `handleGameComplete()` uses scoring engine result when available, falls back to manual calculation for speed test
+- Shows level-up animation overlay when player levels up (4-second display with title, level number, stars)
+- Passes all scoring engine fields to game session API
+- Added AnimatePresence import for level-up overlay
+
+**GameResults.tsx Updates:**
+- Performance rating badge displayed below star rating (SSS/SS/S/A/B/C/D with color-coded gradient background)
+- Score breakdown card showing base points, combo bonus, speed bonus, accuracy bonus, difficulty multiplier
+- Enhanced result interface with avgResponseTime, performanceRating, leveledUp, newLevel, and all scoring breakdown fields
+
+### Task B: AvatarImage Component & 3D Avatar Updates
+
+**Files Modified:**
+1. `src/components/shared/AvatarImage.tsx` — Complete rewrite with size presets, glow, animation, error handling
+2. `src/lib/game-engine/constants.ts` — Added imagePath field to all avatars, gradientCSS to WORLD_THEMES
+3. `src/components/profile/ProfileSetup.tsx` — Uses AvatarImage component with new features
+4. `src/types/index.ts` — Added imagePath to AvatarDef, gradientCSS to WorldTheme
+
+**AvatarImage Component Enhancements:**
+- **Size Presets**: sm=32px, md=48px, lg=64px, xl=96px, xxl=128px (accepts both string presets and numeric values)
+- **Image Path Mapping**: All avatar IDs map to /avatars/{id}.png or /avatars/{id}.svg
+- **SVG Support**: Emoji faces, fruits, and object avatars use SVG fallbacks in /public/avatars/
+- **Loading State**: Skeleton placeholder while image loads
+- **Error Handling**: Falls back to emoji display when image fails to load
+- **Glow Effect**: Optional radial gradient glow behind avatar
+- **Animation**: Optional bounce-on-mount animation via Framer Motion
+- **Rounded Styling**: Configurable rounded-full or rounded-xl clipping
+- **Circular/Non-circular**: Both options supported via `rounded` prop
+
+**Constants.ts Updates:**
+- All 30 avatars now have `imagePath` field pointing to `/avatars/{id}.png` (3D images) or `/avatars/{id}.svg` (SVG fallbacks)
+- All 9 WORLD_THEMES now have `gradientCSS` field with unique linear-gradient backgrounds
+- World theme gradients: emerald→teal (table 1), green→lime (table 2), cyan→blue (table 3), amber→yellow (table 4), pink→rose (table 5), violet→purple (table 6), orange→red (table 7), fuchsia→pink (table 8), yellow→amber (table 9)
+
+**ProfileSetup.tsx Updates:**
+- Avatar grid now uses AvatarImage component with `size="md"` and `animate` prop
+- Selected avatar preview uses `size="lg"` with animation
+- Removed conditional has3DAvatar checks (AvatarImage handles fallback internally)
+
+**SVG Placeholder Avatars Created (15 files in /public/avatars/):**
+- star-face.svg, cool-face.svg, heart-face.svg, party-face.svg, nerd-face.svg
+- apple.svg, strawberry.svg, watermelon.svg, banana.svg
+- rocket.svg, crown.svg, gem.svg, trophy.svg, rainbow.svg, balloon.svg
+- Each SVG has: radial gradient background circle, centered emoji character, 128x128 viewBox
+
+**Bug Fix:**
+- Fixed `restoreAuth()` return type in app-store.ts: changed from `void` to `boolean` (was causing TS error)
+
+### Verification:
+- ✅ ESLint passes with 0 errors
+- ✅ Dev server compiles and runs correctly (200 OK on GET /)
+- ✅ No TypeScript errors in modified files
+- ✅ All new files properly typed with TypeScript

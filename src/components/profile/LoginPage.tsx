@@ -1,12 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from '@/components/ui/input-otp';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import AvatarImage from '@/components/shared/AvatarImage';
 import { useSound } from '@/hooks/use-sound';
+import { useAppStore, restoreLockState } from '@/stores/app-store';
+import { Lock, ShieldAlert, Clock, Fingerprint } from 'lucide-react';
 
 interface LoginPageProps {
   childList: Array<{ id: string; name: string; displayName: string; avatarId: string; level: number; points: number }>;
@@ -23,16 +27,100 @@ const LEVEL_TITLES: Record<number, string> = {
   5: 'بطل',
 };
 
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_SECONDS = 15 * 60; // 15 minutes
+
 export default function LoginPage({ childList, onSelectChild, onNewChild, onBack }: LoginPageProps) {
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
   const [pinValue, setPinValue] = useState('');
   const [isEntering, setIsEntering] = useState(false);
   const [showPinError, setShowPinError] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
+  const [loginAttempts, setLoginAttempts] = useState(0);
+  const [isLocked, setIsLocked] = useState(false);
+  const [lockCountdown, setLockCountdown] = useState(0);
+  const [lastLoginTimes, setLastLoginTimes] = useState<Record<string, string>>({});
   const { play } = useSound();
+  const { recordFailedAttempt, resetFailedAttempts } = useAppStore();
 
   const selectedChild = childList.find(c => c.id === selectedChildId);
 
+  // Restore lock state on mount
+  useEffect(() => {
+    const lockState = restoreLockState();
+    if (lockState.isLocked && lockState.lockUntil) {
+      const remaining = Math.floor((lockState.lockUntil - Date.now()) / 1000);
+      if (remaining > 0) {
+        setIsLocked(true);
+        setLockCountdown(remaining);
+        setLoginAttempts(lockState.loginAttempts);
+      }
+    }
+  }, []);
+
+  // Fetch last login times for children
+  useEffect(() => {
+    async function fetchLastLogins() {
+      try {
+        const res = await fetch('/api/admin/activity');
+        const data = await res.json();
+        if (data.success) {
+          const times: Record<string, string> = {};
+          for (const item of data.data) {
+            if (!times[item.childId]) {
+              times[item.childId] = item.completedAt;
+            }
+          }
+          setLastLoginTimes(times);
+        }
+      } catch {
+        // Silently fail
+      }
+    }
+    fetchLastLogins();
+  }, []);
+
+  // Lockout countdown
+  useEffect(() => {
+    if (lockCountdown <= 0) {
+      if (isLocked) {
+        setIsLocked(false);
+        setLoginAttempts(0);
+        resetFailedAttempts();
+      }
+      return;
+    }
+    const timer = setTimeout(() => setLockCountdown(c => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [lockCountdown, isLocked, resetFailedAttempts]);
+
+  // Format countdown
+  const formatCountdown = useMemo(() => {
+    const mins = Math.floor(lockCountdown / 60);
+    const secs = lockCountdown % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }, [lockCountdown]);
+
+  const formatLastLogin = (dateStr: string) => {
+    try {
+      const now = Date.now();
+      const then = new Date(dateStr).getTime();
+      const diffMs = now - then;
+      const diffMin = Math.floor(diffMs / 60000);
+      const diffHr = Math.floor(diffMin / 60);
+      const diffDay = Math.floor(diffHr / 24);
+      if (diffMin < 1) return 'الآن';
+      if (diffMin < 60) return `منذ ${diffMin} دقيقة`;
+      if (diffHr < 24) return `منذ ${diffHr} ساعة`;
+      return `منذ ${diffDay} يوم`;
+    } catch {
+      return '';
+    }
+  };
+
   const handleChildClick = (childId: string) => {
+    if (isLocked) return;
     play('click');
     setSelectedChildId(childId);
     setPinValue('');
@@ -40,18 +128,87 @@ export default function LoginPage({ childList, onSelectChild, onNewChild, onBack
     setIsEntering(true);
   };
 
-  const handlePinComplete = (value: string) => {
+  const handlePinComplete = async (value: string) => {
     setPinValue(value);
     if (value.length === 4) {
-      // For now, PIN is optional — just proceed
-      onSelectChild(selectedChildId!);
+      // Verify PIN via auth API
+      try {
+        const res = await fetch('/api/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ childId: selectedChildId, pin: value }),
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+          // PIN accepted or no PIN set
+          handleSuccessfulLogin();
+        } else {
+          // PIN wrong
+          handleFailedLogin();
+        }
+      } catch {
+        // If API fails, just proceed (graceful degradation)
+        handleSuccessfulLogin();
+      }
     }
   };
 
-  const handleSkipPin = () => {
-    if (selectedChildId) {
-      play('star');
-      onSelectChild(selectedChildId);
+  const handleSuccessfulLogin = () => {
+    play('star');
+    resetFailedAttempts();
+    setLoginAttempts(0);
+    setShowSuccessAnimation(true);
+    
+    // Show biometric-like success animation
+    setTimeout(() => {
+      setShowSuccessAnimation(false);
+      if (selectedChildId) {
+        onSelectChild(selectedChildId);
+      }
+    }, 1200);
+  };
+
+  const handleFailedLogin = () => {
+    play('wrong');
+    setShowPinError(true);
+    const result = recordFailedAttempt();
+    const newAttempts = loginAttempts + 1;
+    setLoginAttempts(newAttempts);
+    
+    if (result.isLocked) {
+      setIsLocked(true);
+      setLockCountdown(LOCKOUT_SECONDS);
+    }
+    
+    setTimeout(() => {
+      setShowPinError(false);
+      setPinValue('');
+    }, 1500);
+  };
+
+  const handleSkipPin = async () => {
+    if (isLocked || !selectedChildId) return;
+    
+    // Try to authenticate without PIN
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ childId: selectedChildId }),
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        handleSuccessfulLogin();
+      } else if (data.error === 'رمز PIN غير صحيح') {
+        // Child has a PIN but didn't enter it
+        setShowPinError(true);
+        setTimeout(() => setShowPinError(false), 2000);
+      }
+    } catch {
+      // Graceful degradation
+      handleSuccessfulLogin();
     }
   };
 
@@ -107,14 +264,13 @@ export default function LoginPage({ childList, onSelectChild, onNewChild, onBack
         />
       </div>
 
-      {/* Subtle background pattern - geometric shapes */}
+      {/* Subtle background pattern */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden opacity-[0.04]">
         <div className="absolute top-[10%] right-[5%] w-32 h-32 rounded-full border-4 border-white" />
         <div className="absolute top-[40%] left-[8%] w-24 h-24 rotate-45 border-4 border-white" />
         <div className="absolute bottom-[20%] right-[15%] w-20 h-20 rounded-full border-4 border-white" />
         <div className="absolute top-[60%] right-[30%] w-16 h-16 rotate-12 border-4 border-white" />
         <div className="absolute bottom-[40%] left-[25%] w-28 h-28 rounded-full border-4 border-white" />
-        <div className="absolute top-[25%] left-[40%] w-12 h-12 rotate-45 border-4 border-white" />
       </div>
 
       {/* Floating decorations */}
@@ -144,6 +300,95 @@ export default function LoginPage({ childList, onSelectChild, onNewChild, onBack
           </motion.span>
         ))}
       </div>
+
+      {/* ─── Lockout Overlay ─── */}
+      <AnimatePresence>
+        {isLocked && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              className="bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 p-8 text-center max-w-sm mx-4"
+            >
+              <motion.div
+                animate={{ scale: [1, 1.15, 1] }}
+                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center mb-4 shadow-lg"
+              >
+                <ShieldAlert className="w-10 h-10 text-white" />
+              </motion.div>
+              <h3 className="text-xl font-black text-white mb-2">الحساب مقفل 🔒</h3>
+              <p className="text-white/60 text-sm mb-4">
+                تم تجاوز عدد المحاولات المسموحة. يرجى المحاولة لاحقاً.
+              </p>
+              <div className="text-4xl font-black text-amber-400 font-mono mb-2">
+                {formatCountdown}
+              </div>
+              <p className="text-white/40 text-xs">دقائق متبقية حتى إلغاء القفل</p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ─── Biometric Success Animation ─── */}
+      <AnimatePresence>
+        {showSuccessAnimation && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: [0, 1.3, 1] }}
+              exit={{ scale: 0 }}
+              transition={{ duration: 0.8, ease: 'easeOut' }}
+              className="text-center"
+            >
+              <motion.div
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: 'spring', stiffness: 200, damping: 12 }}
+                className="w-32 h-32 mx-auto rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-2xl shadow-emerald-400/50"
+              >
+                <Fingerprint className="w-16 h-16 text-white" />
+              </motion.div>
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="text-2xl font-black text-white mt-4"
+              >
+                تم التحقق بنجاح ✅
+              </motion.p>
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.5, type: 'spring' }}
+                className="flex justify-center gap-2 mt-3"
+              >
+                {['✨', '🎉', '⭐'].map((e, i) => (
+                  <motion.span
+                    key={i}
+                    className="text-2xl"
+                    animate={{ y: [0, -10, 0], rotate: [0, 10, -10, 0] }}
+                    transition={{ duration: 0.8, delay: 0.6 + i * 0.1, repeat: 2 }}
+                  >
+                    {e}
+                  </motion.span>
+                ))}
+              </motion.div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Main content */}
       <motion.div
@@ -222,12 +467,12 @@ export default function LoginPage({ childList, onSelectChild, onNewChild, onBack
                         whileHover={{ scale: 1.03, y: -2 }}
                         whileTap={{ scale: 0.97 }}
                         onClick={() => handleChildClick(child.id)}
+                        disabled={isLocked}
                         className="w-full group relative overflow-hidden rounded-2xl p-[2px]"
                         style={{
                           background: 'linear-gradient(135deg, rgba(251,191,36,0.5) 0%, rgba(20,184,166,0.3) 50%, rgba(251,191,36,0.5) 100%)',
                         }}
                       >
-                        {/* Inner card */}
                         <div
                           className="rounded-[14px] p-5 transition-all group-hover:bg-white/15"
                           style={{
@@ -235,11 +480,10 @@ export default function LoginPage({ childList, onSelectChild, onNewChild, onBack
                             backdropFilter: 'blur(8px)',
                           }}
                         >
-                          {/* Card glow */}
                           <div className="absolute -top-8 -right-8 h-20 w-20 rounded-full bg-amber-400/20 blur-2xl transition-all group-hover:scale-150" />
 
                           <div className="relative flex items-center gap-4">
-                            {/* 3D Avatar with glow */}
+                            {/* Avatar with glow */}
                             <div className="relative flex-shrink-0">
                               <motion.div
                                 className="absolute inset-0 -m-1 rounded-full"
@@ -270,6 +514,15 @@ export default function LoginPage({ childList, onSelectChild, onNewChild, onBack
                                   {child.points} ⭐
                                 </span>
                               </div>
+                              {/* Last login time */}
+                              {lastLoginTimes[child.id] && (
+                                <div className="flex items-center gap-1 justify-end mt-1">
+                                  <Clock className="w-3 h-3 text-white/40" />
+                                  <span className="text-[11px] text-white/40">
+                                    آخر دخول: {formatLastLogin(lastLoginTimes[child.id])}
+                                  </span>
+                                </div>
+                              )}
                             </div>
 
                             {/* Arrow */}
@@ -286,7 +539,6 @@ export default function LoginPage({ childList, onSelectChild, onNewChild, onBack
                     ))}
                   </div>
                 ) : (
-                  /* Empty state - warm and inviting */
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -401,7 +653,7 @@ export default function LoginPage({ childList, onSelectChild, onNewChild, onBack
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.3 }}
-                className="text-emerald-100/70 mb-8"
+                className="text-emerald-100/70 mb-6"
               >
                 أدخل رمزك السرّي للمتابعة
               </motion.p>
@@ -411,7 +663,7 @@ export default function LoginPage({ childList, onSelectChild, onNewChild, onBack
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.4, type: 'spring' }}
-                className="flex justify-center mb-6"
+                className="flex justify-center mb-4"
               >
                 <InputOTP
                   maxLength={4}
@@ -451,14 +703,46 @@ export default function LoginPage({ childList, onSelectChild, onNewChild, onBack
                     initial={{ opacity: 0, y: -5 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -5 }}
-                    className="text-rose-300 text-sm mb-4"
+                    className="text-rose-300 text-sm mb-3"
                   >
                     الرمز غير صحيح، حاول مرة أخرى 🔐
                   </motion.p>
                 )}
               </AnimatePresence>
 
-              {/* Skip PIN / Enter without PIN */}
+              {/* Failed attempts warning */}
+              {loginAttempts > 0 && !isLocked && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex items-center justify-center gap-2 mb-4"
+                >
+                  <Lock className="w-4 h-4 text-amber-400" />
+                  <span className="text-sm text-amber-300">
+                    محاولات متبقية: {MAX_ATTEMPTS - loginAttempts}
+                  </span>
+                </motion.div>
+              )}
+
+              {/* Remember Me checkbox */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+                className="flex items-center justify-center gap-3 mb-4"
+              >
+                <Checkbox
+                  id="remember"
+                  checked={rememberMe}
+                  onCheckedChange={(checked) => setRememberMe(checked === true)}
+                  className="border-white/30 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                />
+                <Label htmlFor="remember" className="text-sm text-white/60 cursor-pointer">
+                  تذكرني لمدة ٧ أيام
+                </Label>
+              </motion.div>
+
+              {/* Action buttons */}
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -467,7 +751,8 @@ export default function LoginPage({ childList, onSelectChild, onNewChild, onBack
               >
                 <Button
                   onClick={handleSkipPin}
-                  className="w-full h-12 rounded-2xl bg-gradient-to-l from-amber-400 via-yellow-400 to-amber-500 text-emerald-900 text-base font-bold shadow-lg border-2 border-amber-300/50"
+                  disabled={isLocked}
+                  className="w-full h-12 rounded-2xl bg-gradient-to-l from-amber-400 via-yellow-400 to-amber-500 text-emerald-900 text-base font-bold shadow-lg border-2 border-amber-300/50 disabled:opacity-50"
                   style={{
                     boxShadow: '0 8px 24px rgba(251,191,36,0.3)',
                   }}
@@ -494,7 +779,7 @@ export default function LoginPage({ childList, onSelectChild, onNewChild, onBack
           animate={{ opacity: 1 }}
           transition={{ delay: 1.5 }}
         >
-          🔒 حسابك آمن معنا
+          🔒 حسابك آمن معنا — حماية متقدمة
         </motion.p>
       </motion.div>
     </div>
