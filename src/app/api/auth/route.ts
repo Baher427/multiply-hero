@@ -1,109 +1,125 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { registerUser, loginUser, verifySession, logoutUser, cleanupSessions } from '@/lib/auth';
 
-// Simple token store (in-memory for development)
-const activeSessions = new Map<string, { childId: string; createdAt: number; expiresAt: number }>();
-
-// POST: Validate child credentials, return session token
+// POST /api/auth/register - Register a new account
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { childId, pin } = body;
+    const { action } = body;
 
-    if (!childId) {
-      return NextResponse.json({ success: false, error: 'childId is required' }, { status: 400 });
-    }
+    if (action === 'register') {
+      const { username, password, role, displayName, email, age, avatarId, favoriteColor } = body;
 
-    const child = await db.child.findUnique({ where: { id: childId } });
-
-    if (!child) {
-      return NextResponse.json({ success: false, error: 'الطفل غير موجود' }, { status: 404 });
-    }
-
-    // If child has a PIN set, verify it
-    if (child.pin && child.pin.length > 0) {
-      if (!pin || pin !== child.pin) {
-        return NextResponse.json({ success: false, error: 'رمز PIN غير صحيح' }, { status: 401 });
+      // Validate required fields
+      if (!username || !password) {
+        return NextResponse.json(
+          { success: false, error: 'اسم المستخدم وكلمة المرور مطلوبان' },
+          { status: 400 }
+        );
       }
-    }
 
-    // Generate session token
-    const token = `mh_${childId.slice(0, 8)}_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 10)}`;
-    const expiresAt = Date.now() + 30 * 60 * 1000; // 30 minutes
+      // Validate role
+      const validRole = ['child', 'parent', 'admin'].includes(role) ? role : 'child';
 
-    // Store session
-    activeSessions.set(token, { childId, createdAt: Date.now(), expiresAt });
+      const result = await registerUser({
+        username,
+        password,
+        role: validRole,
+        displayName,
+        email,
+        age,
+        avatarId,
+        favoriteColor,
+      });
 
-    // Clean up expired sessions
-    for (const [key, session] of activeSessions.entries()) {
-      if (Date.now() > session.expiresAt) {
-        activeSessions.delete(key);
+      if ('error' in result) {
+        return NextResponse.json({ success: false, error: result.error }, { status: 400 });
       }
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          user: result.user,
+          token: result.token,
+        },
+      });
     }
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        token,
-        childId,
-        expiresAt,
-        childName: child.displayName,
-      },
-    });
+    if (action === 'login') {
+      const { username, password } = body;
+
+      if (!username || !password) {
+        return NextResponse.json(
+          { success: false, error: 'اسم المستخدم وكلمة المرور مطلوبان' },
+          { status: 400 }
+        );
+      }
+
+      const result = await loginUser(username, password);
+
+      if ('error' in result) {
+        return NextResponse.json({ success: false, error: result.error }, { status: 401 });
+      }
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          user: result.user,
+          token: result.token,
+        },
+      });
+    }
+
+    return NextResponse.json({ success: false, error: 'إجراء غير صالح' }, { status: 400 });
   } catch (error) {
-    console.error('Auth POST error:', error);
-    return NextResponse.json({ success: false, error: 'فشل في المصادقة' }, { status: 500 });
+    console.error('Auth error:', error);
+    return NextResponse.json({ success: false, error: 'حدث خطأ في المصادقة' }, { status: 500 });
   }
 }
 
-// GET: Check session validity
+// GET /api/auth/me - Get current user from token
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const token = searchParams.get('token');
+    const authHeader = req.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '') || req.cookies.get('auth-token')?.value;
 
     if (!token) {
-      return NextResponse.json({ success: false, error: 'Token is required' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'غير مصرح' }, { status: 401 });
     }
 
-    const session = activeSessions.get(token);
-    if (!session) {
-      return NextResponse.json({ success: false, valid: false, error: 'جلسة غير صالحة' }, { status: 401 });
-    }
-
-    if (Date.now() > session.expiresAt) {
-      activeSessions.delete(token);
-      return NextResponse.json({ success: false, valid: false, error: 'انتهت صلاحية الجلسة' }, { status: 401 });
+    const user = await verifySession(token);
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'جلسة غير صالحة' }, { status: 401 });
     }
 
     return NextResponse.json({
       success: true,
-      valid: true,
-      data: {
-        childId: session.childId,
-        expiresAt: session.expiresAt,
-      },
+      data: { user, token },
     });
   } catch (error) {
     console.error('Auth GET error:', error);
-    return NextResponse.json({ success: false, error: 'فشل في التحقق' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'خطأ في التحقق' }, { status: 500 });
   }
 }
 
-// DELETE: Invalidate session (logout)
+// DELETE /api/auth/logout - Logout
 export async function DELETE(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const token = searchParams.get('token');
+    const authHeader = req.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '') || req.cookies.get('auth-token')?.value;
 
-    if (!token) {
-      return NextResponse.json({ success: false, error: 'Token is required' }, { status: 400 });
+    if (token) {
+      await logoutUser(token);
     }
 
-    activeSessions.delete(token);
-    return NextResponse.json({ success: true, message: 'تم تسجيل الخروج' });
+    // Also clean up expired sessions periodically
+    await cleanupSessions();
+
+    const response = NextResponse.json({ success: true, message: 'تم تسجيل الخروج' });
+    response.cookies.delete('auth-token');
+    return response;
   } catch (error) {
     console.error('Auth DELETE error:', error);
-    return NextResponse.json({ success: false, error: 'فشل في تسجيل الخروج' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'خطأ في تسجيل الخروج' }, { status: 500 });
   }
 }

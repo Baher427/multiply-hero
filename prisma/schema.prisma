@@ -7,6 +7,34 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  role         String   @default("child") // child, parent, admin
+  email        String?  @unique
+  displayName  String?
+  isActive     Boolean  @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  children         Child[]
+  parentProfile    Parent?
+  adminProfile     Admin?
+  sessions         Session[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
 model Child {
   id             String   @id @default(cuid())
   name           String
@@ -26,6 +54,7 @@ model Child {
   bestCombo      Int      @default(0)
   pin            String?
   parentId       String?
+  userId         String?  // Link to User account (for child accounts)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -37,6 +66,7 @@ model Child {
   challengeAttempts   DailyChallengeAttempt[]
   storyProgress       StoryProgress[]
   parent              Parent?              @relation(fields: [parentId], references: [id])
+  user                User?                @relation(fields: [userId], references: [id])
 }
 
 model Parent {
@@ -44,9 +74,11 @@ model Parent {
   name      String
   email     String  @unique
   googleId  String? @unique
+  userId    String? @unique // Link to User account
   createdAt DateTime @default(now())
 
   children Child[]
+  user     User?    @relation(fields: [userId], references: [id])
 }
 
 model TableProgress {
@@ -156,5 +188,8 @@ model Admin {
   id           String   @id @default(cuid())
   email        String   @unique
   passwordHash String
+  userId       String?  @unique // Link to User account
   createdAt    DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
 }

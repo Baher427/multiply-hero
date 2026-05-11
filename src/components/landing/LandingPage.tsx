@@ -19,12 +19,8 @@ import {
   Users,
   ChevronLeft,
 } from 'lucide-react';
-
-interface LandingPageProps {
-  onStart: () => void;
-  onAdmin: () => void;
-  onParent: () => void;
-}
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 // ─── Floating math facts ────────────────────────────────────────────
 const MATH_FACTS = [
@@ -210,7 +206,8 @@ function AnimatedCounter({ target, suffix }: { target: number; suffix: string })
 }
 
 // ─── Main Landing Page ──────────────────────────────────────────────
-export default function LandingPage({ onStart, onAdmin, onParent }: LandingPageProps) {
+export default function LandingPage() {
+  const router = useRouter();
   const [mascotBounce, setMascotBounce] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [activeSection, setActiveSection] = useState('hero');
@@ -252,23 +249,23 @@ export default function LandingPage({ onStart, onAdmin, onParent }: LandingPageP
     if (titleClickCount >= 4) {
       setTitleClickCount(0);
       setShowLockIcon(false);
-      onAdmin();
+      router.push('/admin');
     }
 
     if (titleClickTimer.current) clearTimeout(titleClickTimer.current);
     titleClickTimer.current = setTimeout(() => {
       setTitleClickCount(0);
     }, 3000);
-  }, [titleClickCount, onAdmin]);
+  }, [titleClickCount, router]);
 
   // Secret: Long press mascot for 3 seconds = admin access
   const handleMascotPressStart = useCallback(() => {
     setLongPressActive(true);
     longPressTimer.current = setTimeout(() => {
-      onAdmin();
+      router.push('/admin');
       setLongPressActive(false);
     }, 3000);
-  }, [onAdmin]);
+  }, [router]);
 
   const handleMascotPressEnd = useCallback(() => {
     setLongPressActive(false);
@@ -787,7 +784,7 @@ export default function LandingPage({ onStart, onAdmin, onParent }: LandingPageP
                 </div>
 
                 <Button
-                  onClick={onStart}
+                  onClick={() => router.push('/login')}
                   className="relative z-10 h-16 rounded-3xl border-2 border-amber-300/50 bg-gradient-to-l from-amber-400 via-yellow-400 to-amber-500 px-10 text-xl font-extrabold text-emerald-900 shadow-2xl transition-all sm:h-18 sm:text-2xl md:h-20 md:px-14 md:text-3xl"
                   style={{
                     textShadow: '0 1px 2px rgba(0,0,0,0.1)',
@@ -1203,7 +1200,7 @@ export default function LandingPage({ onStart, onAdmin, onParent }: LandingPageP
               </AnimatePresence>
 
               <Button
-                onClick={onStart}
+                onClick={() => router.push('/login')}
                 className="relative h-18 rounded-3xl border-2 border-emerald-400/30 bg-gradient-to-l from-emerald-500 via-teal-500 to-emerald-600 px-12 text-xl font-extrabold text-white shadow-2xl transition-all sm:h-20 sm:px-16 sm:text-2xl md:text-3xl"
                 style={{
                   textShadow: '0 2px 4px rgba(0,0,0,0.3)',
@@ -1262,7 +1259,7 @@ export default function LandingPage({ onStart, onAdmin, onParent }: LandingPageP
               {/* Quick links */}
               <div className="flex items-center gap-4">
                 <Button
-                  onClick={onParent}
+                  onClick={() => router.push('/parent')}
                   variant="ghost"
                   className="h-9 rounded-full border border-white/10 bg-white/5 px-5 text-xs font-medium text-white/50 backdrop-blur-sm transition-all hover:bg-white/10 hover:text-white/70 sm:text-sm"
                 >
