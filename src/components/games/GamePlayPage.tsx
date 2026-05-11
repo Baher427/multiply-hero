@@ -103,9 +103,9 @@ export default function GamePlayPage() {
   }
 
   const handleBack = () => {
-    // Going back from game play should use replace so the play page
-    // is removed from history (user can't accidentally return to a finished game)
-    router.replace('/games');
+    // Use router.back() to go to the actual previous page in history
+    // This preserves proper history chain: dashboard → games → play → back → games
+    router.back();
   };
 
   switch (gameConfig.gameType) {

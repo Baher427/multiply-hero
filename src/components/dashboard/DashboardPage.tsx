@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/components/auth/AuthProvider';
 import { useAppStore } from '@/stores/auth-store';
 import { useGameStore } from '@/stores/game-store';
 import { useAuthGuard, useLogoutNavigation } from '@/lib/navigation';
@@ -13,10 +12,9 @@ import { motion } from 'framer-motion';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading, user, selectedChild, setSelectedChild } = useAuthGuard();
+  const { isAuthenticated, isLoading, user, selectedChild, setSelectedChild, logout } = useAuthGuard();
   const { setSelectedTable, setSelectedGameType } = useAppStore();
   const { navigateAfterLogout } = useLogoutNavigation();
-  const { logout } = useAuth();
 
   const [tableProgress, setTableProgress] = useState<TableProgressData[]>([]);
   const [earnedBadges, setEarnedBadges] = useState<Array<{ badgeType: string; earnedAt: string }>>([]);

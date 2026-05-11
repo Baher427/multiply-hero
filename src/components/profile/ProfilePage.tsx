@@ -1,6 +1,5 @@
 'use client';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/components/auth/AuthProvider';
 import { useAuthGuard, useLogoutNavigation, useSmartBack } from '@/lib/navigation';
 import { motion } from 'framer-motion';
 import { ArrowRight, LogOut, User, Shield, Settings, Gamepad2, Trophy, Star, Coins, Gem } from 'lucide-react';
@@ -10,12 +9,9 @@ import Link from 'next/link';
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, isAuthenticated, isLoading, selectedChild, logout } = useAuth();
+  const { user, isAuthenticated, isLoading, selectedChild, logout } = useAuthGuard();
   const { navigateAfterLogout } = useLogoutNavigation();
   const { goBack } = useSmartBack('/dashboard');
-
-  // Use centralized auth guard
-  useAuthGuard();
 
   const handleLogout = async () => {
     await logout();
